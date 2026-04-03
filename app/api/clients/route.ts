@@ -9,10 +9,11 @@
  *   Body: { name: string, email: string, plan?: string }
  *
  * GET /api/clients
- *   Returns all clients (admin use only — protect with Clerk auth in production).
+ *   Returns all clients — requires admin role in Clerk public metadata.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { createClient, getClientsCollection } from "@/lib/db/client-db";
 
 export async function POST(req: NextRequest) {
@@ -56,6 +57,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const { userId, sessionClaims } = await auth();
+  const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role;
+
+  if (!userId || role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const clients = await getClientsCollection();
     const list = await clients

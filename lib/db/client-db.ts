@@ -205,6 +205,7 @@ export async function createClient(data: {
     plan: data.plan ?? "Free",
     status: "trial",
     pipelineStage: 0,
+    stripeOnboardingComplete: false,
     collectionsProvisioned: false,
     createdAt: now,
     updatedAt: now,

@@ -39,7 +39,14 @@ export interface ClientDoc {
   /** Index (0-5) into PIPELINE_STAGES array */
   pipelineStage: number;
   customDomain?: string;
+  /** Stripe Connect Express account ID for this client */
   stripeAccountId?: string;
+  /** True once the client has completed Stripe Express onboarding */
+  stripeOnboardingComplete: boolean;
+  /** Stripe Customer ID used for billing the client directly (seat subscriptions) */
+  stripeCustomerId?: string;
+  /** Stripe Subscription ID for the $25/mo seat plan (set when userCount > 25) */
+  stripeSubscriptionId?: string;
   /** Clerk organization/user ID — wired after Clerk integration */
   clerkUserId?: string;
   /** True once the 4 per-client collections have been provisioned */
