@@ -11,7 +11,7 @@ function MockupSignup() {
     <div className="bg-[#0a0a15] rounded-2xl border border-white/[0.07] overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]">
         <div className="w-3 h-3 rounded bg-[#FF6B61] flex-shrink-0" />
-        <span className="text-[11px] font-semibold text-white">SMBConnect</span>
+        <span className="text-[11px] font-semibold text-white">SAGAH</span>
         <div className="ml-auto flex gap-3">
           {["Features", "About", "Pricing"].map((l) => (
             <span key={l} className="text-[9px] text-white/25">{l}</span>
@@ -247,12 +247,12 @@ const STEPS = [
     categoryBg: "bg-violet-400/[0.08]",
     title: "Explore the platform and create your free account",
     paragraphs: [
-      "Browse the SMBConnect homepage to see exactly what the platform provides: a complete, production-grade tech stack that any entrepreneur can own and operate without hiring a development team. Every feature — authentication, payments, email, analytics, and SEO — is pre-built, tested, and ready to configure for your specific niche.",
+      "Browse the SAGAH homepage to see exactly what the platform provides: a complete, production-grade tech stack that any entrepreneur can own and operate without hiring a development team. Every feature — authentication, payments, email, analytics, and SEO — is pre-built, tested, and ready to configure for your specific niche.",
       "Creating your account takes under two minutes with no credit card required. From your first login you get access to a live sandbox dashboard, a guided onboarding checklist, and the booking calendar so you can immediately reserve your personalized strategy call. There is nothing to install, configure, or deploy — your environment is already running.",
     ],
     insightHeadline: "Stop paying for 5 separate tools",
     insightBody:
-      "The average entrepreneur cobbles together Webflow ($23/mo), an auth provider ($35/mo), email marketing ($50/mo), analytics add-ons, and a Stripe integration layer — totalling over $1,600 per year before writing a single line of product code. SMBConnect replaces all of it on one platform, provisioned and running on day one.",
+      "The average entrepreneur cobbles together Webflow ($23/mo), an auth provider ($35/mo), email marketing ($50/mo), analytics add-ons, and a Stripe integration layer — totalling over $1,600 per year before writing a single line of product code. SAGAH replaces all of it on one platform, provisioned and running on day one.",
     insightHighlight: "Save $1,600+ per year in SaaS overhead starting immediately.",
     reverseMockup: false,
   },
@@ -265,7 +265,7 @@ const STEPS = [
     categoryBg: "bg-blue-400/[0.08]",
     title: "Book a personalized demo and get your implementation roadmap",
     paragraphs: [
-      "Use the built-in booking calendar to reserve a 30 or 60-minute strategy session with an SMBConnect specialist. Before the call, a brief intake form captures your business model — whether you are a service provider, e-commerce seller, content creator, or micro-SaaS founder. That context means we arrive at the call already tailored to your exact situation.",
+      "Use the built-in booking calendar to reserve a 30 or 60-minute strategy session with an SAGAH specialist. Before the call, a brief intake form captures your business model — whether you are a service provider, e-commerce seller, content creator, or micro-SaaS founder. That context means we arrive at the call already tailored to your exact situation.",
       "During the session we walk through your target audience, your monetization model, the features you need most, and any technical constraints or existing tools. You leave with a documented implementation roadmap: which integrations to activate first, which pages drive the most conversions in your vertical, and a realistic timeline to your first paying customer. This is a free technical planning session — not a sales call.",
     ],
     insightHeadline: "The fastest path to your first paying customer",
@@ -302,7 +302,7 @@ const STEPS = [
     title: "Connect Stripe and start earning revenue from day one",
     paragraphs: [
       "Stripe Connect is configured directly from your admin panel. Choose one-time products, recurring subscription tiers, or usage-based billing and activate them without touching backend code. Your checkout page is served with your brand colors, your logo, and automatic support for Apple Pay, Google Pay, and buy-now-pay-later options through Stripe's payment request UI — giving every customer their preferred way to pay.",
-      "Stripe handles PCI DSS compliance, automated fraud detection via Stripe Radar, tax calculation across 40+ countries, and smart dunning: automatic retries on failed charges and customer recovery emails that recover an average of 26% of payments that would otherwise be lost. Revenue flows to your connected bank account within two business days. Every transaction, refund, and dispute is visible in real time in both Stripe's dashboard and your SMBConnect admin panel.",
+      "Stripe handles PCI DSS compliance, automated fraud detection via Stripe Radar, tax calculation across 40+ countries, and smart dunning: automatic retries on failed charges and customer recovery emails that recover an average of 26% of payments that would otherwise be lost. Revenue flows to your connected bank account within two business days. Every transaction, refund, and dispute is visible in real time in both Stripe's dashboard and your SAGAH admin panel.",
     ],
     insightHeadline: "Subscriptions turn one-time buyers into compounding revenue",
     insightBody:

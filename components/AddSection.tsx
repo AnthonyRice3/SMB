@@ -23,7 +23,7 @@ export default function AddSection() {
             Ready to ship your SMB app?
           </h2>
           <p className="text-white/50 max-w-md mx-auto mb-8 leading-7">
-            Join thousands of developers building with SMBConnect. Free to start — no credit card required.
+            Join thousands of developers building with SAGAH. Free to start — no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <motion.a

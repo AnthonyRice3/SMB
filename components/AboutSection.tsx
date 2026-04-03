@@ -25,11 +25,11 @@ export default function AboutSection() {
             Built for developers who ship for small businesses
           </h2>
           <p className="text-white/50 leading-7 mb-4">
-            SMBConnect gives you a single platform to integrate the best tools for your SMB clients —
+            SAGAH gives you a single platform to integrate the best tools for your SMB clients —
             auth, payments, storage, and email — without wrestling with each vendor’s SDK individually.
           </p>
           <p className="text-white/50 leading-7">
-            Whether you’re building a fintech app, a SaaS product, or an internal tool, SMBConnect
+            Whether you’re building a fintech app, a SaaS product, or an internal tool, SAGAH
             handles the boring infrastructure so you can focus on what matters.
           </p>
         </motion.div>

@@ -1,0 +1,183 @@
+/**
+ * lib/db/schema.ts
+ *
+ * TypeScript interfaces for every MongoDB collection.
+ *
+ * Collection layout
+ * ─────────────────
+ *  Database: SAGAH  (MONGODB_DB env var)
+ *
+ *  Platform-level (shared):
+ *    • clients            — one doc per SAGAH customer (the businesses)
+ *    • tickets            — support tickets from clients
+ *    • inquiries          — pre-signup inquiry / demo requests
+ *
+ *  Per-client (isolated, provisioned on account creation):
+ *    • {clientId}_app_users     — end-users who auth into the client's custom app
+ *    • {clientId}_app_events    — analytics events fired from the client's app
+ *    • {clientId}_app_bookings  — calendar bookings from the client's app
+ *    • {clientId}_app_revenue   — payment/subscription transactions
+ *
+ *  clientId is a sanitized slug derived from the client's email domain, e.g.
+ *  "admin@acmecorp.com" → "acmecorp".  It is used as the collection prefix so
+ *  each client's data is fully isolated — no cross-client queries are possible
+ *  without knowing the exact clientId.
+ */
+
+import type { ObjectId } from "mongodb";
+
+// ─── Platform: clients ──────────────────────────────────────────────────────
+
+export interface ClientDoc {
+  _id?: ObjectId;
+  /** Sanitized slug used as collection prefix, e.g. "acme_corp" */
+  clientId: string;
+  name: string;
+  email: string;
+  plan: "Free" | "Starter" | "Pro" | "Enterprise";
+  status: "active" | "trial" | "inactive" | "suspended";
+  /** Index (0-5) into PIPELINE_STAGES array */
+  pipelineStage: number;
+  customDomain?: string;
+  stripeAccountId?: string;
+  /** Clerk organization/user ID — wired after Clerk integration */
+  clerkUserId?: string;
+  /** True once the 4 per-client collections have been provisioned */
+  collectionsProvisioned: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Platform: tickets ──────────────────────────────────────────────────────
+
+export type TicketCategory = "general" | "billing" | "technical" | "feature" | "urgent";
+export type TicketStatus   = "open" | "in_progress" | "resolved" | "closed";
+export type TicketPriority = "low" | "medium" | "high" | "urgent";
+
+export interface TicketMessageDoc {
+  id: string;
+  from: "user" | "admin";
+  text: string;
+  createdAt: Date;
+}
+
+export interface TicketDoc {
+  _id?: ObjectId;
+  /** Foreign key → clients.clientId */
+  clientId: string;
+  subject: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  status: TicketStatus;
+  messages: TicketMessageDoc[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Platform: inquiries ────────────────────────────────────────────────────
+
+export type InquiryType   = "inquiry" | "demo";
+export type InquiryStatus = "new" | "read" | "replied";
+
+export interface InquiryDoc {
+  _id?: ObjectId;
+  type: InquiryType;
+  name: string;
+  email: string;
+  company: string;
+  message?: string;
+  topic?: string;
+  /** ISO date string for demo requests */
+  date?: string;
+  time?: string;
+  duration?: number;
+  status: InquiryStatus;
+  createdAt: Date;
+}
+
+// ─── Per-client: {clientId}_app_users ───────────────────────────────────────
+
+export interface AppUserDoc {
+  _id?: ObjectId;
+  /** Clerk user ID — populated after Clerk integration */
+  clerkUserId?: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  /** Subscription tier inside the client's app */
+  plan?: string;
+  /** Arbitrary key-value metadata from the client's app */
+  metadata?: Record<string, unknown>;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  pageViews: number;
+  sessionCount: number;
+}
+
+// ─── Per-client: {clientId}_app_events ──────────────────────────────────────
+
+export type AppEventType =
+  | "pageview"
+  | "click"
+  | "conversion"
+  | "booking"
+  | "payment"
+  | "signup"
+  | "custom";
+
+export interface AppEventDoc {
+  _id?: ObjectId;
+  /** Clerk user ID of the end-user who triggered the event */
+  userId?: string;
+  sessionId: string;
+  type: AppEventType;
+  /** Pathname, e.g. "/menu" or "/book" */
+  page?: string;
+  referrer?: string;
+  /** Arbitrary payload — ad source, button label, etc. */
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+// ─── Per-client: {clientId}_app_bookings ────────────────────────────────────
+
+export type BookingStatus = "confirmed" | "pending" | "cancelled";
+
+export interface AppBookingDoc {
+  _id?: ObjectId;
+  /** Clerk user ID of the end-user who booked */
+  userId?: string;
+  name: string;
+  email: string;
+  service: string;
+  /** ISO date string YYYY-MM-DD */
+  date: string;
+  /** Human-readable time, e.g. "2:00 PM" */
+  time: string;
+  /** Duration in minutes */
+  duration: number;
+  status: BookingStatus;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Per-client: {clientId}_app_revenue ─────────────────────────────────────
+
+export type RevenueStatus = "succeeded" | "pending" | "failed" | "refunded";
+export type RevenueType   = "subscription" | "one_time";
+
+export interface AppRevenueDoc {
+  _id?: ObjectId;
+  stripePaymentIntentId?: string;
+  stripeSubscriptionId?: string;
+  /** Clerk user ID of the paying end-user */
+  userId?: string;
+  /** Amount in cents */
+  amount: number;
+  currency: string;
+  type: RevenueType;
+  plan?: string;
+  status: RevenueStatus;
+  createdAt: Date;
+}

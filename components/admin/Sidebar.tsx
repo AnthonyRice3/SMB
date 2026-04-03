@@ -106,7 +106,7 @@ export default function Sidebar() {
       <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-[#FF6B61] shrink-0" />
-          <span className="font-semibold text-white text-sm tracking-tight">SMBConnect</span>
+          <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
         </Link>
         <p className="mt-1 text-[11px] text-white/25 pl-7">Admin Panel</p>
       </div>

@@ -16,8 +16,8 @@ export interface Inquiry {
   createdAt: string;
 }
 
-export const INQUIRY_EVENT = 'smbconnect:inquiries';
-const KEY = 'smbconnect_inquiries';
+export const INQUIRY_EVENT = 'SAGAH:inquiries';
+const KEY = 'SAGAH_inquiries';
 
 export function getInquiries(): Inquiry[] {
   if (typeof window === 'undefined') return [];

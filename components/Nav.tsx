@@ -14,7 +14,7 @@ export default function Nav() {
               <path d="M6 1L11 4.5V9L6 11L1 8.5V4L6 1Z" fill="white" />
             </svg>
           </div>
-          <span className="font-semibold text-white tracking-tight">SMBConnect</span>
+          <span className="font-semibold text-white tracking-tight">SAGAH</span>
         </div>
 
         {/* Nav links */}
@@ -22,8 +22,9 @@ export default function Nav() {
           <Link href="/" className="hover:text-white transition-colors duration-150">Home</Link>
           <Link href="/#learn" className="hover:text-white transition-colors duration-150">Features</Link>
           <Link href="/how-it-works" className="hover:text-white transition-colors duration-150">How it works</Link>
-          <Link href="/#get-started" className="hover:text-white transition-colors duration-150">Pricing</Link>
+          <Link href="/about" className="hover:text-white transition-colors duration-150">About</Link>
           <Link href="/contact" className="hover:text-white transition-colors duration-150">Contact</Link>
+          <Link href="/dashboard" className="hover:text-white transition-colors duration-150">Dashboard</Link>
         </div>
 
         {/* CTA */}

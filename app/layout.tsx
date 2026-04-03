@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SMBConnect — Apps for Small Businesses",
+  title: "SAGAH — Apps for Small Businesses",
   description: "One platform to build, manage, and scale apps for small businesses with Stripe, Clerk, MongoDB, and Resend.",
 };
 

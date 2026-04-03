@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const users = [
   { id: 1, name: 'Acme Corp',     email: 'admin@acme.com',       plan: 'Enterprise', status: 'active',   revenue: 899, joined: '2025-11-12', lastActive: '2h ago',  smbs: 18 },
@@ -85,11 +86,13 @@ export default function UsersPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
-                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors"
+                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] transition-colors cursor-pointer group"
               >
                 <td className="px-5 py-4">
-                  <div className="font-medium text-white">{u.name}</div>
-                  <div className="text-xs text-white/35 mt-0.5">{u.email}</div>
+                  <Link href={`/admin/users/${u.id}`} className="block">
+                    <div className="font-medium text-white group-hover:text-[#FF6B61] transition-colors">{u.name}</div>
+                    <div className="text-xs text-white/35 mt-0.5">{u.email}</div>
+                  </Link>
                 </td>
                 <td className="px-5 py-4">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${planColor[u.plan]}`}>{u.plan}</span>
@@ -100,7 +103,17 @@ export default function UsersPage() {
                 <td className="px-5 py-4 text-white/60">{u.smbs}</td>
                 <td className="px-5 py-4 font-medium text-white">{u.revenue > 0 ? `$${u.revenue}/mo` : '—'}</td>
                 <td className="px-5 py-4 text-white/40">{u.joined}</td>
-                <td className="px-5 py-4 text-white/40">{u.lastActive}</td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/40">{u.lastActive}</span>
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#FF6B61] font-medium ml-4"
+                    >
+                      Manage →
+                    </Link>
+                  </div>
+                </td>
               </motion.tr>
             ))}
           </tbody>

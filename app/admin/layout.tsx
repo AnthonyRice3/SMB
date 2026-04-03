@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Sidebar from '../../components/admin/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'Admin — SMBConnect',
-  description: 'SMBConnect admin panel',
+  title: 'Admin — SAGAH',
+  description: 'SAGAH admin panel',
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
