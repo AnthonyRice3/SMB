@@ -1,15 +1,21 @@
 "use client";
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useUser, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { useUser, UserButton } from '@clerk/nextjs';
+import AuthModal from './AuthModal';
+
+type ModalMode = "sign-in" | "sign-up" | null;
 
 export default function Nav() {
   const { isSignedIn, isLoaded, user } = useUser();
   const isAdmin = user?.publicMetadata?.role === 'admin';
+  const [modal, setModal] = useState<ModalMode>(null);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#07070e]/80 backdrop-blur-xl">
+    <>
+      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#07070e]/80 backdrop-blur-xl">
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-2">
@@ -48,24 +54,34 @@ export default function Nav() {
             <UserButton />
           ) : (
             <>
-              <SignInButton mode="modal">
-                <button className="text-sm text-white/60 hover:text-white transition-colors duration-150 px-3 py-1.5">
-                  Log in
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-white text-[#07070e] py-1.5 px-4 rounded-full text-sm font-semibold"
-                >
-                  Get started
-                </motion.button>
-              </SignUpButton>
+              <button
+                onClick={() => setModal("sign-in")}
+                className="text-sm text-white/60 hover:text-white transition-colors duration-150 px-3 py-1.5 cursor-pointer"
+              >
+                Log in
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setModal("sign-up")}
+                className="bg-white text-[#07070e] py-1.5 px-4 rounded-full text-sm font-semibold cursor-pointer"
+              >
+                Get started
+              </motion.button>
             </>
           )}
         </div>
       </nav>
     </header>
+
+    <AnimatePresence>
+      {modal && (
+        <AuthModal
+          initialMode={modal}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
