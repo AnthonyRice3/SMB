@@ -2,8 +2,12 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useUser, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 
 export default function Nav() {
+  const { isSignedIn, isLoaded, user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === 'admin';
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#07070e]/80 backdrop-blur-xl">
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
@@ -24,18 +28,43 @@ export default function Nav() {
           <Link href="/how-it-works" className="hover:text-white transition-colors duration-150">How it works</Link>
           <Link href="/about" className="hover:text-white transition-colors duration-150">About</Link>
           <Link href="/contact" className="hover:text-white transition-colors duration-150">Contact</Link>
-          <Link href="/dashboard" className="hover:text-white transition-colors duration-150">Dashboard</Link>
+          {isSignedIn && (
+            <Link href="/dashboard" className="hover:text-white transition-colors duration-150">
+              Dashboard
+            </Link>
+          )}
+          {isAdmin && (
+            <Link href="/admin" className="text-[#FF6B61]/70 hover:text-[#FF6B61] transition-colors duration-150">
+              Admin
+            </Link>
+          )}
         </div>
 
-        {/* CTA */}
-        <motion.a
-          href="#get-started"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="bg-white text-[#07070e] py-1.5 px-4 rounded-full text-sm font-semibold"
-        >
-          Get started
-        </motion.a>
+        {/* Auth area */}
+        <div className="flex items-center gap-3">
+          {!isLoaded ? (
+            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+          ) : isSignedIn ? (
+            <UserButton />
+          ) : (
+            <>
+              <SignInButton mode="modal">
+                <button className="text-sm text-white/60 hover:text-white transition-colors duration-150 px-3 py-1.5">
+                  Log in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-white text-[#07070e] py-1.5 px-4 rounded-full text-sm font-semibold"
+                >
+                  Get started
+                </motion.button>
+              </SignUpButton>
+            </>
+          )}
+        </div>
       </nav>
     </header>
   );
