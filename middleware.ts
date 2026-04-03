@@ -26,6 +26,7 @@ const isPublic = createRouteMatcher([
   "/contact",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/sso-callback(.*)",
   "/api/webhooks/(.*)",
   "/api/stripe/webhook",
 ]);
