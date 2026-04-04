@@ -18,10 +18,14 @@ const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 export default clerkMiddleware(async (auth, req) => {
   if (isPublic(req)) return NextResponse.next();
 
-  // auth.protect() redirects to sign-in automatically if not authenticated
-  const { sessionClaims } = await auth.protect();
+  const { userId, sessionClaims } = await auth();
 
-  // Admin routes require role = "admin" in Clerk public metadata
+  if (!userId) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("redirect_url", req.url);
+    return NextResponse.redirect(signInUrl);
+  }
+
   if (isAdminRoute(req)) {
     const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role;
     if (role !== "admin") {
@@ -30,7 +34,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   return NextResponse.next();
-});
+}, { debug: process.env.NODE_ENV === "development" });
 
 export const config = {
   matcher: [

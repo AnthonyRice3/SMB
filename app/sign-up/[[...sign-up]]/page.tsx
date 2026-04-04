@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSignUp } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,7 +15,6 @@ const slide = {
 
 export default function SignUpPage() {
   const { signUp, fetchStatus } = useSignUp();
-  const router = useRouter();
 
   const [step, setStep]           = useState<Step>("register");
   const [firstName, setFirstName] = useState("");
@@ -59,9 +57,7 @@ export default function SignUpPage() {
   const finalize = async () => {
     await signUp!.finalize({
       navigate: ({ decorateUrl }) => {
-        const url = decorateUrl("/dashboard");
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        window.location.href = decorateUrl(`${window.location.origin}/dashboard`);
       },
     });
   };
