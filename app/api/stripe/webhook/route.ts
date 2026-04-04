@@ -26,8 +26,6 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { getClientsCollection, getAppRevenueCollection } from "@/lib/db/client-db";
 
-export const config = { api: { bodyParser: false } };
-
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

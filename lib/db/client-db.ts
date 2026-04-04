@@ -60,7 +60,7 @@ export function collectionName(
 // ─── Typed collection accessors ─────────────────────────────────────────────
 
 async function db() {
-  const client = await clientPromise;
+  const client = await clientPromise();
   return client.db(DB_NAME);
 }
 

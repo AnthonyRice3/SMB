@@ -11,9 +11,6 @@
  */
 import { MongoClient, ServerApiVersion } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
-if (!uri) throw new Error("Missing MONGODB_URI environment variable");
-
 const options = {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -27,16 +24,27 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-let clientPromise: Promise<MongoClient>;
+// Module-level cache for production (one per serverless instance lifecycle)
+let _prodClientPromise: Promise<MongoClient> | undefined;
 
-if (process.env.NODE_ENV === "development") {
-  // Reuse across hot-module reloads
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = new MongoClient(uri, options).connect();
+/**
+ * Returns a lazily-initialised MongoClient promise.
+ * Calling this at request time (not module load time) prevents build
+ * failures when MONGODB_URI is unavailable during static analysis.
+ */
+export default function clientPromise(): Promise<MongoClient> {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error("Missing MONGODB_URI environment variable");
+
+  if (process.env.NODE_ENV === "development") {
+    if (!global._mongoClientPromise) {
+      global._mongoClientPromise = new MongoClient(uri, options).connect();
+    }
+    return global._mongoClientPromise;
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = new MongoClient(uri, options).connect();
-}
 
-export default clientPromise;
+  if (!_prodClientPromise) {
+    _prodClientPromise = new MongoClient(uri, options).connect();
+  }
+  return _prodClientPromise;
+}
