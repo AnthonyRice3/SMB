@@ -82,7 +82,7 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
     await signIn!.finalize({
       navigate: ({ decorateUrl }) => {
         onClose();
-        window.location.href = decorateUrl("/dashboard");
+        window.location.href = decorateUrl(`${window.location.origin}/dashboard`);
       },
     });
   };
@@ -127,7 +127,7 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
     await signUp!.finalize({
       navigate: ({ decorateUrl }) => {
         onClose();
-        window.location.href = decorateUrl("/dashboard");
+        window.location.href = decorateUrl(`${window.location.origin}/dashboard`);
       },
     });
   };

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSignIn } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,7 +15,6 @@ const slide = {
 
 export default function SignInPage() {
   const { signIn, fetchStatus } = useSignIn();
-  const router = useRouter();
 
   const [step, setStep]         = useState<Step>("credentials");
   const [email, setEmail]       = useState("");
@@ -62,9 +60,7 @@ export default function SignInPage() {
   const finalize = async () => {
     await signIn!.finalize({
       navigate: ({ decorateUrl }) => {
-        const url = decorateUrl("/dashboard");
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        window.location.href = decorateUrl(`${window.location.origin}/dashboard`);
       },
     });
   };
