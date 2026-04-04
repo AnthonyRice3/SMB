@@ -9,14 +9,18 @@
  * Import `clientPromise` in server-only files (API routes, Server Actions,
  * Server Components).  NEVER import this in "use client" components.
  */
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, MongoClientOptions, ServerApiVersion } from "mongodb";
 
-const options = {
+const options: MongoClientOptions = {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
+  tls: true,
+  serverSelectionTimeoutMS: 10_000,
+  connectTimeoutMS: 10_000,
+  socketTimeoutMS: 45_000,
 };
 
 declare global {
