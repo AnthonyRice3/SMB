@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSignIn, useSignUp } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,7 +18,6 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
   const [mode, setMode] = useState<Mode>(initialMode);
   const { signIn, fetchStatus: siFetch } = useSignIn();
   const { signUp, fetchStatus: suFetch } = useSignUp();
-  const router = useRouter();
 
   // ── sign-in state ─────────────────────────────────────────────────────────
   const [siStep, setSiStep] = useState<SiStep>("credentials");
@@ -83,10 +81,8 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
   const finalizeSi = async () => {
     await signIn!.finalize({
       navigate: ({ decorateUrl }) => {
-        const url = decorateUrl("/dashboard");
         onClose();
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        window.location.href = decorateUrl("/dashboard");
       },
     });
   };
@@ -130,10 +126,8 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
   const finalizeSu = async () => {
     await signUp!.finalize({
       navigate: ({ decorateUrl }) => {
-        const url = decorateUrl("/dashboard");
         onClose();
-        if (url.startsWith("http")) window.location.href = url;
-        else router.push(url);
+        window.location.href = decorateUrl("/dashboard");
       },
     });
   };

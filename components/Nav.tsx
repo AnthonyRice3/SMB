@@ -51,7 +51,18 @@ export default function Nav() {
           {!isLoaded ? (
             <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
           ) : isSignedIn ? (
-            <UserButton />
+            <UserButton
+              appearance={{
+                variables: {
+                  colorPrimary: "#E81A54",
+                },
+                elements: {
+                  avatarBox: "!bg-[#E81A54]",
+                  avatarImage: "!bg-[#E81A54]",
+                  userButtonAvatarBox: "!bg-[#E81A54] [&>span]:text-[#360A0A] [&>span]:font-bold",
+                },
+              }}
+            />
           ) : (
             <>
               <button
