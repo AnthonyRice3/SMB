@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 const fade = (d = 0) => ({
@@ -183,11 +184,23 @@ const priorityLabel: Record<string, string> = {
 };
 
 export default function PipelinePage() {
+  return (
+    <Suspense>
+      <PipelineContent />
+    </Suspense>
+  );
+}
+
+function PipelineContent() {
+  const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState<string | null>("03");
   const [expandedStep, setExpandedStep] = useState<string | null>("stripe");
   const [pipelineStage, setPipelineStage] = useState(2);
   const [stripeComplete, setStripeComplete] = useState(false);
   const [hasCustomDomain, setHasCustomDomain] = useState(false);
+  const [clientData, setClientData] = useState<{ clientId: string; email: string; name: string } | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeReturn, setStripeReturn] = useState<"complete" | "refresh" | null>(null);
 
   useEffect(() => {
     fetch("/api/clients/me")
@@ -196,9 +209,38 @@ export default function PipelinePage() {
         if (typeof data.pipelineStage === "number") setPipelineStage(data.pipelineStage);
         if (data.stripeOnboardingComplete) setStripeComplete(true);
         if (data.customDomain) setHasCustomDomain(true);
+        if (data.clientId) setClientData({ clientId: data.clientId, email: data.email, name: data.name });
       })
       .catch(() => null);
   }, []);
+
+  // Handle Stripe onboarding return URLs
+  useEffect(() => {
+    const stripeParam = searchParams.get("stripe");
+    if (stripeParam === "complete") {
+      setStripeReturn("complete");
+      setStripeComplete(true);
+    } else if (stripeParam === "refresh") {
+      setStripeReturn("refresh");
+    }
+  }, [searchParams]);
+
+  const handleStripeConnect = async () => {
+    if (!clientData) return;
+    setStripeLoading(true);
+    try {
+      const res = await fetch("/api/stripe/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clientData),
+      });
+      const { url, error } = await res.json();
+      if (error) throw new Error(error);
+      window.location.href = url;
+    } catch {
+      setStripeLoading(false);
+    }
+  };
 
   // Derive stage statuses from DB value
   type StageStatus = "done" | "active" | "pending";
@@ -412,17 +454,48 @@ export default function PipelinePage() {
                     >
                       <div className="px-5 pb-5 border-t border-white/6">
                         <p className="text-sm text-white/55 leading-6 my-4">{step.why}</p>
-                        <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Steps to complete</p>
-                        <div className="space-y-2.5">
-                          {step.steps.map((s, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${step.color} bg-white/5`}>
-                                {i + 1}
-                              </span>
-                              <p className="text-sm text-white/60">{s}</p>
+                        {step.id === "stripe" ? (
+                          <div className="space-y-3">
+                            {stripeReturn === "complete" ? (
+                              <div className="flex items-center gap-3 bg-emerald-400/10 border border-emerald-400/20 rounded-xl px-4 py-3">
+                                <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                                <p className="text-sm text-emerald-400 font-medium">Stripe account connected! Payments are now enabled.</p>
+                              </div>
+                            ) : stripeReturn === "refresh" ? (
+                              <div className="flex items-start gap-3 bg-amber-400/10 border border-amber-400/20 rounded-xl px-4 py-3 mb-2">
+                                <svg className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                                <p className="text-sm text-amber-400">Your onboarding link expired. Click below to continue where you left off.</p>
+                              </div>
+                            ) : null}
+                            <button
+                              onClick={handleStripeConnect}
+                              disabled={stripeLoading || !clientData}
+                              className="flex items-center justify-center gap-2.5 w-full bg-[#635BFF] hover:bg-[#4f49cc] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-xl transition-colors cursor-pointer"
+                            >
+                              {stripeLoading ? (
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+                              ) : (
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.293 2.48-3.26 2.48-5.58-.028-4.098-2.522-5.79-6.546-7.457z"/></svg>
+                              )}
+                              {stripeLoading ? "Connecting…" : stripeReturn === "refresh" ? "Resume Stripe setup" : "Connect with Stripe"}
+                            </button>
+                            <p className="text-[11px] text-white/25 text-center">You&apos;ll be redirected to Stripe to complete identity verification. Your data is handled securely by Stripe.</p>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Steps to complete</p>
+                            <div className="space-y-2.5">
+                              {step.steps.map((s, i) => (
+                                <div key={i} className="flex items-start gap-3">
+                                  <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${step.color} bg-white/5`}>
+                                    {i + 1}
+                                  </span>
+                                  <p className="text-sm text-white/60">{s}</p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   )}
