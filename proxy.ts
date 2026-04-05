@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
@@ -6,13 +6,13 @@ const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
 ]);
 
+const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+
 export default clerkMiddleware(async (auth, req) => {
   if (!isProtectedRoute(req)) return;
 
   try {
-    const { userId, sessionClaims } = await auth();
-
-    console.log("[proxy] path:", req.nextUrl.pathname, "userId:", userId);
+    const { userId } = await auth();
 
     if (!userId) {
       const signInUrl = new URL("/sign-in", req.url);
@@ -20,10 +20,12 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(signInUrl);
     }
 
-    // Admin routes require role = "admin"
-    const isAdmin = createRouteMatcher(["/admin(.*)"]);
-    if (isAdmin(req)) {
-      const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role;
+    // Admin routes: fetch fresh user from Clerk API to bypass any JWT caching
+    if (isAdminRoute(req)) {
+      const client = await clerkClient();
+      const user = await client.users.getUser(userId);
+      const role = (user.publicMetadata as { role?: string } | null)?.role;
+      console.log("[proxy] admin check userId:", userId, "role:", role);
       if (role !== "admin") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
@@ -35,7 +37,7 @@ export default clerkMiddleware(async (auth, req) => {
       { status: 500 }
     );
   }
-}, { debug: true });
+});
 
 export const config = {
   matcher: [
