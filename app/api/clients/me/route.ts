@@ -52,8 +52,9 @@ export async function GET() {
         return NextResponse.json({ error: "No email on Clerk account" }, { status: 422 });
       }
 
+      const businessName = (clerkUser.unsafeMetadata as { businessName?: string } | null)?.businessName;
       const nameParts = [clerkUser.firstName, clerkUser.lastName].filter(Boolean);
-      const name = nameParts.join(" ") || "Unknown";
+      const name = businessName || nameParts.join(" ") || "Unknown";
 
       const { clientId } = await createClient({ name, email: primaryEmail, plan: "Free" });
 

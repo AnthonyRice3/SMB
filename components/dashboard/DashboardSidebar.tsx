@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -66,6 +67,18 @@ const navItems = [
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
+  const [client, setClient] = useState<{ name: string; plan: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clients/me")
+      .then((r) => r.json())
+      .then((d) => { if (d?.name) setClient({ name: d.name, plan: d.plan ?? "Free" }); })
+      .catch(() => null);
+  }, []);
+
+  const initials = client?.name
+    ? client.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "–";
 
   return (
     <aside className="w-56 shrink-0 border-r border-white/[0.06] bg-[#0a0a14] flex flex-col">
@@ -75,14 +88,14 @@ export default function DashboardSidebar() {
           <div className="w-5 h-5 rounded-md bg-[#FF6B61] shrink-0" />
           <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
         </Link>
-        {/* User identity placeholder */}
+        {/* User identity */}
         <div className="flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2.5">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#FF6B61] to-[#ff9a8b] flex items-center justify-center shrink-0 text-[10px] font-bold text-white">
-            JD
+            {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-white truncate">Your Business</p>
-            <p className="text-[10px] text-white/30 truncate">Pro Plan</p>
+            <p className="text-xs font-semibold text-white truncate">{client?.name ?? "Loading…"}</p>
+            <p className="text-[10px] text-white/30 truncate">{client?.plan ?? "—"}</p>
           </div>
         </div>
       </div>

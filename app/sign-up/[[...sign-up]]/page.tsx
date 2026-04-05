@@ -17,10 +17,11 @@ export default function SignUpPage() {
   const { signUp, fetchStatus } = useSignUp();
 
   const [step, setStep]           = useState<Step>("register");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName]   = useState("");
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
+  const [firstName, setFirstName]       = useState("");
+  const [lastName, setLastName]         = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [code, setCode]           = useState("");
   const [error, setError]         = useState("");
 
@@ -36,7 +37,7 @@ export default function SignUpPage() {
     if (!signUp) return;
     setError("");
 
-    const { error: err } = await signUp.password({ emailAddress: email, password, firstName, lastName });
+    const { error: err } = await signUp.password({ emailAddress: email, password, firstName, lastName, unsafeMetadata: { businessName } });
     if (err) { setError(getErrorMsg(err)); return; }
 
     await signUp.verifications.sendEmailCode();
@@ -174,6 +175,19 @@ export default function SignUpPage() {
                       autoComplete="new-password"
                       minLength={8}
                       placeholder="Min. 8 characters"
+                      className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#FF6B61]/50 text-white placeholder-white/20 text-sm rounded-xl px-3.5 py-2.5 outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-white/50 mb-1.5">Business name</label>
+                    <input
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      required
+                      autoComplete="organization"
+                      placeholder="Acme Corp"
                       className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-[#FF6B61]/50 text-white placeholder-white/20 text-sm rounded-xl px-3.5 py-2.5 outline-none transition-colors"
                     />
                   </div>
