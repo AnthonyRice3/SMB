@@ -367,26 +367,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-            <motion.div
-              variants={fade(0.22)}
-              initial="hidden"
-              animate="visible"
-              className="bg-white/2 border border-white/6 rounded-2xl p-5"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <ellipse cx="12" cy="5" rx="9" ry="3" />
-                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                </svg>
-                <span className="text-xs font-semibold text-white/60">Your plan</span>
-                <span className="ml-auto text-xs font-semibold text-blue-400">{client.plan}</span>
-              </div>
-              <p className="text-xs text-white/35 leading-5">
-                Status: <span className="text-white/60 capitalize">{client.status}</span>
-              </p>
-              <Link href="/dashboard/data" className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-3 block font-medium">
-                Browse your data â†’
-              </Link>
-            </motion.div>
-          )}
