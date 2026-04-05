@@ -10,7 +10,7 @@ const fade = (d = 0) => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: d } },
 });
 
-/* Pipeline stage labels â€” index matches client.pipelineStage */
+/* Pipeline stage labels — index matches client.pipelineStage */
 const STAGE_LABELS = [
   "Discovery Call",
   "Design Approval",
@@ -20,7 +20,7 @@ const STAGE_LABELS = [
   "Live & Growing",
 ];
 
-/* Action items â€” shown unless the related flag is already complete */
+/* Action items — shown unless the related flag is already complete */
 const ALL_ACTIONS = [
   {
     key: "stripe",
@@ -115,26 +115,26 @@ export default function DashboardPage() {
   const quickStats = [
     {
       label: "Page views",
-      value: stats ? stats.pageViews.total.toLocaleString() : "â€”",
-      note: stats ? "All time" : "Loadingâ€¦",
+      value: stats ? stats.pageViews.total.toLocaleString() : "—",
+      note: stats ? "All time" : "Loading…",
       color: "text-blue-400",
     },
     {
       label: "Revenue (MRR)",
-      value: stats ? (stats.revenue.mrr > 0 ? `$${stats.revenue.mrr.toLocaleString()}` : "â€”") : "â€”",
-      note: stats ? (stats.revenue.mrr > 0 ? "This month" : "After Stripe connect") : "Loadingâ€¦",
+      value: stats ? (stats.revenue.mrr > 0 ? `$${stats.revenue.mrr.toLocaleString()}` : "—") : "—",
+      note: stats ? (stats.revenue.mrr > 0 ? "This month" : "After Stripe connect") : "Loading…",
       color: "text-emerald-400",
     },
     {
       label: "Active users",
-      value: stats ? stats.users.total.toLocaleString() : "â€”",
-      note: stats ? (stats.users.total > 0 ? "In your app" : "Available at launch") : "Loadingâ€¦",
+      value: stats ? stats.users.total.toLocaleString() : "—",
+      note: stats ? (stats.users.total > 0 ? "In your app" : "Available at launch") : "Loading…",
       color: "text-violet-400",
     },
     {
       label: "Bookings",
-      value: stats ? stats.bookings.confirmed.toString() : "â€”",
-      note: stats ? `${stats.bookings.pending} pending` : "Loadingâ€¦",
+      value: stats ? stats.bookings.confirmed.toString() : "—",
+      note: stats ? `${stats.bookings.pending} pending` : "Loading…",
       color: "text-[#FF6B61]",
     },
   ];
@@ -145,7 +145,7 @@ export default function DashboardPage() {
       {/* Header */}
       <motion.div variants={fade(0)} initial="hidden" animate="visible" className="mb-8">
         <h1 className="text-xl font-semibold text-white">
-          {client ? `Welcome back, ${client.name.split(" ")[0]} ðŸ‘‹` : "Welcome back ðŸ‘‹"}
+          {client ? `Welcome back, ${client.name.split(" ")[0]} 👋` : "Welcome back 👋"}
         </h1>
         <p className="text-sm text-white/40 mt-0.5">{today}</p>
       </motion.div>
@@ -181,14 +181,14 @@ export default function DashboardPage() {
               <div>
                 <h2 className="text-sm font-semibold text-white">Development Pipeline</h2>
                 <p className="text-xs text-white/35 mt-0.5">
-                  Currently in stage {stageIdx + 1} of {stages.length} â€” {STAGE_LABELS[stageIdx]}
+                  Currently in stage {stageIdx + 1} of {stages.length} — {STAGE_LABELS[stageIdx]}
                 </p>
               </div>
               <Link
                 href="/dashboard/pipeline"
                 className="text-xs text-[#FF6B61] hover:text-[#ff9a8b] transition-colors font-medium"
               >
-                Full details â†’
+                Full details →
               </Link>
             </div>
 

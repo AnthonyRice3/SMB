@@ -72,10 +72,10 @@ export default function MonetizationPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'MRR',               value: loading ? 'â€”' : `$${mrr.toLocaleString()}` },
-          { label: 'ARR',               value: loading ? 'â€”' : `$${arr.toLocaleString()}` },
-          { label: 'Total Clients',     value: loading ? 'â€”' : total.toString()           },
-          { label: 'Avg Revenue / User', value: loading ? 'â€”' : `$${arpu.toFixed(0)}`     },
+          { label: 'MRR',               value: loading ? '—' : `$${mrr.toLocaleString()}` },
+          { label: 'ARR',               value: loading ? '—' : `$${arr.toLocaleString()}` },
+          { label: 'Total Clients',     value: loading ? '—' : total.toString()           },
+          { label: 'Avg Revenue / User', value: loading ? '—' : `$${arpu.toFixed(0)}`     },
         ].map((s, i) => (
           <motion.div
             key={s.label}

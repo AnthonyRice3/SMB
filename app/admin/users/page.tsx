@@ -51,7 +51,7 @@ export default function UsersPage() {
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-white">Users</h1>
         <p className="text-sm text-white/40 mt-0.5">
-          {loading ? 'Loadingâ€¦' : `${clients.length} total account${clients.length !== 1 ? 's' : ''}`}
+          {loading ? 'Loading…' : `${clients.length} total account${clients.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export default function UsersPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or emailâ€¦"
+          placeholder="Search name or email…"
           className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/20 transition-colors"
         />
         <div className="flex gap-2">
@@ -90,7 +90,7 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-5 py-10 text-center text-white/25 text-sm">Loadingâ€¦</td></tr>
+              <tr><td colSpan={4} className="px-5 py-10 text-center text-white/25 text-sm">Loading…</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={4} className="px-5 py-10 text-center text-white/25 text-sm">
                 {clients.length === 0 ? 'No clients yet.' : 'No users match your search.'}
@@ -118,7 +118,7 @@ export default function UsersPage() {
                   </span>
                 </td>
                 <td className="px-5 py-4 text-white/40">
-                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'â€”'}
+                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 </td>
               </motion.tr>
             ))}
