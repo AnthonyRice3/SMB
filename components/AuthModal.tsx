@@ -28,13 +28,14 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
   const siLoading = siFetch === "fetching";
 
   // ── sign-up state ─────────────────────────────────────────────────────────
-  const [suStep, setSuStep] = useState<SuStep>("register");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [suEmail, setSuEmail] = useState("");
-  const [suPassword, setSuPassword] = useState("");
-  const [suCode, setSuCode] = useState("");
-  const [suError, setSuError] = useState("");
+  const [suStep, setSuStep]             = useState<SuStep>("register");
+  const [firstName, setFirstName]       = useState("");
+  const [lastName, setLastName]         = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [suEmail, setSuEmail]           = useState("");
+  const [suPassword, setSuPassword]     = useState("");
+  const [suCode, setSuCode]             = useState("");
+  const [suError, setSuError]           = useState("");
   const suLoading = suFetch === "fetching";
 
   // Close on Escape
@@ -108,6 +109,7 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
       password: suPassword,
       firstName,
       lastName,
+      unsafeMetadata: { businessName },
     });
     if (error) { setSuError(getErr(error)); return; }
     await signUp.verifications.sendEmailCode();
@@ -146,7 +148,7 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
   const switchMode = (m: Mode) => {
     setMode(m);
     setSiError(""); setSiStep("credentials"); setSiCode("");
-    setSuError(""); setSuStep("register"); setSuCode("");
+    setSuError(""); setSuStep("register"); setSuCode(""); setBusinessName("");
   };
 
   return (
@@ -289,6 +291,7 @@ export default function AuthModal({ initialMode = "sign-in", onClose }: AuthModa
                             <Field label="First name" type="text" value={firstName} onChange={setFirstName} placeholder="Alex" autoComplete="given-name" />
                             <Field label="Last name" type="text" value={lastName} onChange={setLastName} placeholder="Smith" autoComplete="family-name" />
                           </div>
+                          <Field label="Business name" type="text" value={businessName} onChange={setBusinessName} placeholder="Acme Corp" autoComplete="organization" />
                           <Field label="Work email" type="email" value={suEmail} onChange={setSuEmail} placeholder="you@company.com" autoComplete="email" />
                           <Field label="Password" type="password" value={suPassword} onChange={setSuPassword} placeholder="Min. 8 characters" autoComplete="new-password" minLength={8} />
                           <div id="clerk-captcha" />
