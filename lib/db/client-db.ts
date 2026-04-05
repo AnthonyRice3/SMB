@@ -25,6 +25,8 @@ import type {
   AppBookingDoc,
   AppRevenueDoc,
   ClientDoc,
+  InquiryDoc,
+  TicketDoc,
 } from "@/lib/db/schema";
 import type { Collection } from "mongodb";
 
@@ -219,4 +221,25 @@ export async function createClient(data: {
   );
 
   return { clientId, created: true };
+}
+
+// ─── Platform: inquiries ─────────────────────────────────────────────────────
+
+export async function getInquiriesCollection(): Promise<Collection<InquiryDoc>> {
+  return (await db()).collection<InquiryDoc>("inquiries");
+}
+
+// ─── Platform: tickets ───────────────────────────────────────────────────────
+
+export async function getTicketsCollection(): Promise<Collection<TicketDoc>> {
+  return (await db()).collection<TicketDoc>("tickets");
+}
+
+// ─── Convenience: look up client by Clerk user ID ────────────────────────────
+
+export async function getClientByClerkUserId(
+  userId: string
+): Promise<ClientDoc | null> {
+  const clients = await getClientsCollection();
+  return clients.findOne({ clerkUserId: userId }) as Promise<ClientDoc | null>;
 }

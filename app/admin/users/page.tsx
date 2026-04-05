@@ -1,25 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-
-const users = [
-  { id: 1, name: 'Acme Corp',     email: 'admin@acme.com',       plan: 'Enterprise', status: 'active',   revenue: 899, joined: '2025-11-12', lastActive: '2h ago',  smbs: 18 },
-  { id: 2, name: 'BuildFast Inc', email: 'hi@buildfast.io',       plan: 'Pro',        status: 'active',   revenue: 299, joined: '2026-01-03', lastActive: '5m ago',  smbs: 7  },
-  { id: 3, name: 'PixelWave',     email: 'dev@pixelwave.co',      plan: 'Pro',        status: 'active',   revenue: 299, joined: '2026-01-19', lastActive: '1d ago',  smbs: 4  },
-  { id: 4, name: 'NexaScale',     email: 'info@nexascale.com',    plan: 'Starter',    status: 'active',   revenue: 49,  joined: '2026-02-01', lastActive: '3h ago',  smbs: 2  },
-  { id: 5, name: 'CloudMint',     email: 'ops@cloudmint.io',      plan: 'Starter',    status: 'trial',    revenue: 0,   joined: '2026-03-15', lastActive: '12h ago', smbs: 1  },
-  { id: 6, name: 'DataForge',     email: 'team@dataforge.dev',    plan: 'Pro',        status: 'active',   revenue: 299, joined: '2025-12-08', lastActive: '30m ago', smbs: 9  },
-  { id: 7, name: 'Tangent Labs',  email: 'hello@tangent.dev',     plan: 'Free',       status: 'inactive', revenue: 0,   joined: '2026-03-28', lastActive: '6d ago',  smbs: 0  },
-  { id: 8, name: 'VeloApps',      email: 'cto@veloapps.io',       plan: 'Enterprise', status: 'active',   revenue: 899, joined: '2025-10-22', lastActive: '1h ago',  smbs: 23 },
-];
 
 const planColor: Record<string, string> = {
-  Enterprise: 'text-orange-400 bg-orange-400/10',
-  Pro:        'text-violet-400 bg-violet-400/10',
-  Starter:    'text-blue-400 bg-blue-400/10',
-  Free:       'text-white/40 bg-white/[0.06]',
+  enterprise: 'text-orange-400 bg-orange-400/10',
+  pro:        'text-violet-400 bg-violet-400/10',
+  starter:    'text-blue-400 bg-blue-400/10',
+  free:       'text-white/40 bg-white/[0.06]',
 };
 
 const statusColor: Record<string, string> = {
@@ -28,14 +16,33 @@ const statusColor: Record<string, string> = {
   inactive: 'text-white/30 bg-white/[0.05]',
 };
 
+interface ClientRow {
+  _id: string;
+  name: string;
+  email: string;
+  plan?: string;
+  status?: string;
+  createdAt?: string;
+}
+
 export default function UsersPage() {
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
-  const filtered = users.filter((u) => {
+  useEffect(() => {
+    fetch('/api/clients')
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setClients(data); })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = clients.filter((u) => {
     const q = search.toLowerCase();
     const matchSearch = u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-    const matchFilter = filter === 'all' || u.status === filter;
+    const matchFilter = filter === 'all' || (u.status ?? 'active') === filter;
     return matchSearch && matchFilter;
   });
 
@@ -43,7 +50,9 @@ export default function UsersPage() {
     <div className="px-8 py-8">
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-white">Users</h1>
-        <p className="text-sm text-white/40 mt-0.5">{users.length} total accounts</p>
+        <p className="text-sm text-white/40 mt-0.5">
+          {loading ? 'Loadingâ€¦' : `${clients.length} total account${clients.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {/* Filters */}
@@ -51,7 +60,7 @@ export default function UsersPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or email…"
+          placeholder="Search name or emailâ€¦"
           className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/20 transition-colors"
         />
         <div className="flex gap-2">
@@ -74,54 +83,49 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06]">
-              {['Account', 'Plan', 'Status', 'SMBs', 'Revenue', 'Joined', 'Last Active'].map((h) => (
+              {['Account', 'Plan', 'Status', 'Joined'].map((h) => (
                 <th key={h} className="px-5 py-3.5 text-left text-xs font-medium text-white/30">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u, i) => (
+            {loading ? (
+              <tr><td colSpan={4} className="px-5 py-10 text-center text-white/25 text-sm">Loadingâ€¦</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={4} className="px-5 py-10 text-center text-white/25 text-sm">
+                {clients.length === 0 ? 'No clients yet.' : 'No users match your search.'}
+              </td></tr>
+            ) : filtered.map((u, i) => (
               <motion.tr
-                key={u.id}
+                key={u._id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
-                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] transition-colors"
               >
                 <td className="px-5 py-4">
-                  <Link href={`/admin/users/${u.id}`} className="block">
-                    <div className="font-medium text-white group-hover:text-[#FF6B61] transition-colors">{u.name}</div>
-                    <div className="text-xs text-white/35 mt-0.5">{u.email}</div>
-                  </Link>
+                  <div className="font-medium text-white">{u.name}</div>
+                  <div className="text-xs text-white/35 mt-0.5">{u.email}</div>
                 </td>
                 <td className="px-5 py-4">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${planColor[u.plan]}`}>{u.plan}</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${planColor[u.plan?.toLowerCase() ?? 'free'] ?? planColor.free}`}>
+                    {u.plan ?? 'free'}
+                  </span>
                 </td>
                 <td className="px-5 py-4">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[u.status]}`}>{u.status}</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[u.status ?? 'active'] ?? statusColor.active}`}>
+                    {u.status ?? 'active'}
+                  </span>
                 </td>
-                <td className="px-5 py-4 text-white/60">{u.smbs}</td>
-                <td className="px-5 py-4 font-medium text-white">{u.revenue > 0 ? `$${u.revenue}/mo` : '—'}</td>
-                <td className="px-5 py-4 text-white/40">{u.joined}</td>
-                <td className="px-5 py-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40">{u.lastActive}</span>
-                    <Link
-                      href={`/admin/users/${u.id}`}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-[#FF6B61] font-medium ml-4"
-                    >
-                      Manage →
-                    </Link>
-                  </div>
+                <td className="px-5 py-4 text-white/40">
+                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'â€”'}
                 </td>
               </motion.tr>
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && (
-          <p className="text-center text-white/25 text-sm py-10">No users match your search.</p>
-        )}
       </div>
     </div>
   );
 }
+

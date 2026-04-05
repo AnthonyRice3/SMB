@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const fade = (d = 0) => ({
@@ -10,7 +10,7 @@ const fade = (d = 0) => ({
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-const TODAY  = new Date(2026, 3, 3); // April 3, 2026
+const TODAY  = new Date();
 
 function toKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -30,15 +30,7 @@ interface Booking {
   notes?: string;
 }
 
-/* ─── Mock existing bookings ─────────────────────────────── */
-const INITIAL_BOOKINGS: Booking[] = [
-  { id: "b1", date: "2026-04-07", time: "10:00 AM", name: "Jane Doe",     email: "jane@example.com",  service: "Strategy Session",    duration: 60, status: "confirmed", notes: "Wants to discuss Stripe onboarding." },
-  { id: "b2", date: "2026-04-09", time: "2:00 PM",  name: "Bob Smith",    email: "bob@example.com",   service: "Technical Consult",   duration: 30, status: "confirmed" },
-  { id: "b3", date: "2026-04-09", time: "3:00 PM",  name: "Mike Torres",  email: "mike@example.com",  service: "Product Demo",        duration: 60, status: "pending" },
-  { id: "b4", date: "2026-04-14", time: "11:00 AM", name: "Priya Patel",  email: "priya@example.com", service: "Strategy Session",    duration: 60, status: "confirmed" },
-  { id: "b5", date: "2026-04-16", time: "1:00 PM",  name: "Chris Nguyen", email: "chris@example.com", service: "Technical Consult",   duration: 30, status: "pending", notes: "Has questions about MongoDB schema." },
-  { id: "b6", date: "2026-04-21", time: "10:00 AM", name: "Sara Lee",     email: "sara@example.com",  service: "Product Demo",        duration: 30, status: "cancelled" },
-];
+
 
 const TIMES = ["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM"];
 const SERVICES = ["Strategy Session","Product Demo","Technical Consult","Check-in Call","Onboarding Walkthrough"];
@@ -50,7 +42,20 @@ const STATUS_CLS: Record<BookingStatus, string> = {
 };
 
 export default function CalendarPage() {
-  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/me/bookings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setBookings(data.map((b: Record<string, unknown>) => ({ ...b, id: String(b._id) } as Booking)));
+        }
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
   const [viewMo, setViewMo]     = useState(new Date(2026, 3, 1));
   const [selected, setSelected] = useState<Date | null>(null);
   const [newSlot, setNewSlot]   = useState<string | null>(null);
@@ -90,24 +95,37 @@ export default function CalendarPage() {
     .sort((a, b) => (a.date + a.time > b.date + b.time ? 1 : -1))
     .slice(0, 5);
 
-  function markStatus(id: string, status: BookingStatus) {
+  async function markStatus(id: string, status: BookingStatus) {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+    await fetch(`/api/me/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).catch(() => null);
   }
 
-  function addBooking() {
+  async function addBooking() {
     if (!selected || !newSlot || !form.name || !form.email || !form.service) return;
-    const booking: Booking = {
-      id: Date.now().toString(36),
+    const payload = {
       date: toKey(selected),
       time: newSlot,
       name: form.name,
       email: form.email,
       service: form.service,
       duration: Number(form.duration),
-      status: "confirmed",
+      status: "confirmed" as BookingStatus,
       notes: form.notes || undefined,
     };
-    setBookings((prev) => [...prev, booking]);
+    const res = await fetch("/api/me/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => null);
+    if (res?.ok) {
+      const created = await res.json().catch(() => null);
+      const booking: Booking = { id: String(created?._id ?? Date.now().toString(36)), ...payload };
+      setBookings((prev) => [...prev, booking]);
+    }
     setForm({ name: "", email: "", service: "", duration: "30", notes: "" });
     setNewSlot(null);
     setShowForm(false);
@@ -121,7 +139,8 @@ export default function CalendarPage() {
       <motion.div variants={fade(0)} initial="hidden" animate="visible" className="mb-8">
         <h1 className="text-xl font-semibold text-white">Calendar</h1>
         <p className="text-sm text-white/40 mt-1">
-          Manage appointments your customers book through your app.
+          Manage appointments booked through your app.
+          {loading && <span className="text-white/25"> Loading…</span>}
         </p>
       </motion.div>
 
@@ -436,7 +455,7 @@ export default function CalendarPage() {
 
           <div className="mt-5 pt-4 border-t border-white/[0.06]">
             <p className="text-xs text-white/25 text-center leading-5">
-              When your app is live, customers will book directly from your scheduling page and bookings will appear here instantly.
+            When customers book through your scheduling page, appointments will appear here instantly.
             </p>
           </div>
         </motion.div>

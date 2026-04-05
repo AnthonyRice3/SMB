@@ -2,8 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getInquiries, updateInquiryStatus, INQUIRY_EVENT } from '../../../lib/inquiries';
-import type { Inquiry, InquiryStatus } from '../../../lib/inquiries';
+
+type InquiryStatus = 'new' | 'read' | 'replied';
+
+interface Inquiry {
+  _id: string;
+  type: 'inquiry' | 'demo';
+  name: string;
+  email: string;
+  company: string;
+  message?: string;
+  date?: string;
+  time?: string;
+  topic?: string;
+  duration?: number;
+  status: InquiryStatus;
+  createdAt: string;
+}
 
 const STATUS_COLOR: Record<InquiryStatus, string> = {
   new:     'bg-[#FF6B61]/15 text-[#FF6B61]',
@@ -18,16 +33,22 @@ const TYPE_COLOR = {
 
 export default function InquiriesPage() {
   const [items,    setItems]    = useState<Inquiry[]>([]);
+  const [loading,  setLoading]  = useState(true);
   const [typeF,    setTypeF]    = useState<'all' | 'inquiry' | 'demo'>('all');
   const [statusF,  setStatusF]  = useState<'all' | InquiryStatus>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  useEffect(() => {
-    function refresh() { setItems(getInquiries()); }
-    refresh();
-    window.addEventListener(INQUIRY_EVENT, refresh);
-    return () => window.removeEventListener(INQUIRY_EVENT, refresh);
-  }, []);
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/inquiries');
+      if (res.ok) setItems(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   const filtered = items.filter((i) =>
     (typeF   === 'all' || i.type   === typeF) &&
@@ -38,8 +59,13 @@ export default function InquiriesPage() {
   const totalInquiry  = items.filter((i) => i.type   === 'inquiry').length;
   const totalDemo     = items.filter((i) => i.type   === 'demo').length;
 
-  function mark(id: string, status: InquiryStatus) {
-    updateInquiryStatus(id, status);
+  async function mark(id: string, status: InquiryStatus) {
+    await fetch(`/api/inquiries/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    setItems((prev) => prev.map((i) => i._id === id ? { ...i, status } : i));
   }
 
   return (
@@ -95,7 +121,9 @@ export default function InquiriesPage() {
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-20 text-white/30 text-sm">Loading…</div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white/[0.02] border border-white/[0.06] rounded-2xl">
           <div className="text-3xl mb-3">✉</div>
           <p className="text-white/40 text-sm">No inquiries yet.</p>
@@ -106,12 +134,13 @@ export default function InquiriesPage() {
       ) : (
         <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
           {filtered.map((item, idx) => {
-            const isExpanded = expanded === item.id;
+            const itemId = item._id;
+            const isExpanded = expanded === itemId;
             return (
-              <div key={item.id} className={idx < filtered.length - 1 ? 'border-b border-white/[0.06]' : ''}>
+              <div key={itemId} className={idx < filtered.length - 1 ? 'border-b border-white/[0.06]' : ''}>
                 {/* Row */}
                 <button
-                  onClick={() => setExpanded(isExpanded ? null : item.id)}
+                  onClick={() => setExpanded(isExpanded ? null : itemId)}
                   className="w-full text-left px-5 py-4 hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -204,7 +233,7 @@ export default function InquiriesPage() {
                         <div className="flex gap-2 flex-wrap">
                           {item.status === 'new' && (
                             <button
-                              onClick={() => mark(item.id, 'read')}
+                              onClick={() => mark(itemId, 'read')}
                               className="text-xs px-3 py-1.5 rounded-lg bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors font-medium"
                             >
                               Mark as read
@@ -212,7 +241,7 @@ export default function InquiriesPage() {
                           )}
                           {item.status !== 'replied' && (
                             <button
-                              onClick={() => mark(item.id, 'replied')}
+                              onClick={() => mark(itemId, 'replied')}
                               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 transition-colors font-medium"
                             >
                               Mark as replied
@@ -220,7 +249,7 @@ export default function InquiriesPage() {
                           )}
                           {item.status !== 'new' && (
                             <button
-                              onClick={() => mark(item.id, 'new')}
+                              onClick={() => mark(itemId, 'new')}
                               className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] text-white/40 hover:text-white/60 transition-colors font-medium"
                             >
                               Reopen

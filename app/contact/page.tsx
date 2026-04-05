@@ -4,14 +4,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
-import { addInquiry } from '../../lib/inquiries';
 
 /* ─── Constants ─────────────────────────────────────────── */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 const TIMES  = ['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM'];
 const TOPICS = ['General Demo','Stripe Connect Setup','Clerk Auth Configuration','MongoDB Schema Design','Resend Email Integration','Custom Integration'];
-const TODAY  = new Date(2026, 3, 2);
+const TODAY  = new Date();
 
 function toKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -66,6 +65,7 @@ const WHY = [
 export default function ContactPage() {
   const [tab,      setTab]      = useState<'inquiry' | 'demo'>('inquiry');
   const [done,     setDone]     = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   /* Inquiry form */
   const [iq, setIq] = useState({ name: '', email: '', company: '', message: '' });
@@ -94,27 +94,45 @@ export default function ContactPage() {
     setTimeout(() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' }), 50);
   }
 
-  function submitIq(e: React.FormEvent) {
+  async function submitIq(e: React.FormEvent) {
     e.preventDefault();
-    addInquiry({ type: 'inquiry', ...iq });
-    setIq({ name: '', email: '', company: '', message: '' });
-    setDone(true);
-    setTimeout(() => setDone(false), 4000);
+    setSubmitting(true);
+    try {
+      await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'inquiry', ...iq }),
+      });
+      setIq({ name: '', email: '', company: '', message: '' });
+      setDone(true);
+      setTimeout(() => setDone(false), 4000);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function submitDm(e: React.FormEvent) {
+  async function submitDm(e: React.FormEvent) {
     e.preventDefault();
     if (!demoDate || !demoSlot) return;
-    addInquiry({
-      type: 'demo', ...dm,
-      date: demoDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-      time: demoSlot,
-      duration: Number(dm.duration),
-    });
-    setDm({ name: '', email: '', company: '', topic: '', duration: '30' });
-    setDemoDate(null); setDemoSlot(null);
-    setDone(true);
-    setTimeout(() => setDone(false), 4000);
+    setSubmitting(true);
+    try {
+      await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'demo', ...dm,
+          date: demoDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          time: demoSlot,
+          duration: Number(dm.duration),
+        }),
+      });
+      setDm({ name: '', email: '', company: '', topic: '', duration: '30' });
+      setDemoDate(null); setDemoSlot(null);
+      setDone(true);
+      setTimeout(() => setDone(false), 4000);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputCls = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/20 transition-colors";
@@ -312,9 +330,10 @@ export default function ContactPage() {
                 <motion.button
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full bg-[#FF6B61] hover:bg-[#ff5244] text-white py-3 rounded-full font-semibold text-sm transition-colors"
+                  disabled={submitting}
+                  className="w-full bg-[#FF6B61] hover:bg-[#ff5244] text-white py-3 rounded-full font-semibold text-sm transition-colors disabled:opacity-60"
                 >
-                  Send inquiry →
+                  {submitting ? 'Sending…' : 'Send inquiry →'}
                 </motion.button>
               </motion.form>
 
@@ -454,14 +473,14 @@ export default function ContactPage() {
                   <motion.button
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     type="submit"
-                    disabled={!demoDate || !demoSlot}
+                    disabled={!demoDate || !demoSlot || submitting}
                     className={`ml-auto py-2.5 px-6 rounded-full text-sm font-semibold transition-colors ${
-                      demoDate && demoSlot
+                      demoDate && demoSlot && !submitting
                         ? 'bg-[#FF6B61] hover:bg-[#ff5244] text-white'
                         : 'bg-white/[0.05] text-white/25 cursor-not-allowed'
                     }`}
                   >
-                    Confirm demo →
+                    {submitting ? 'Booking…' : 'Confirm demo →'}
                   </motion.button>
                 </div>
               </motion.form>

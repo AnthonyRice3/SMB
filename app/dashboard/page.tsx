@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import MessageModal from "@/components/dashboard/MessageModal";
@@ -10,56 +10,56 @@ const fade = (d = 0) => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: d } },
 });
 
-/* Pipeline stages — matches pipeline page */
-const STAGES = [
-  { label: "Discovery Call",     status: "done" },
-  { label: "Design Approval",    status: "done" },
-  { label: "Development",        status: "active" },
-  { label: "Testing & QA",       status: "pending" },
-  { label: "Launch",             status: "pending" },
-  { label: "Live & Growing",     status: "pending" },
+/* Pipeline stage labels â€” index matches client.pipelineStage */
+const STAGE_LABELS = [
+  "Discovery Call",
+  "Design Approval",
+  "Development",
+  "Testing & QA",
+  "Launch",
+  "Live & Growing",
 ];
 
-/* Action items with urgency */
-const ACTIONS = [
+/* Action items â€” shown unless the related flag is already complete */
+const ALL_ACTIONS = [
   {
+    key: "stripe",
     title: "Connect your Stripe account",
     detail: "Required to activate payments and subscriptions on your app.",
     priority: "high",
     href: "/dashboard/pipeline",
+    hideWhen: (c: ClientData) => c.stripeOnboardingComplete,
   },
   {
+    key: "domain",
     title: "Point your domain to your app",
     detail: "Share your domain or purchase one so we can configure DNS.",
     priority: "high",
     href: "/dashboard/pipeline",
+    hideWhen: (c: ClientData) => !!c.customDomain,
   },
   {
+    key: "copy",
     title: "Review your homepage copy",
     detail: "Confirm the headline, tagline, and service descriptions look right.",
     priority: "medium",
     href: "/dashboard/pipeline",
+    hideWhen: () => false,
   },
   {
+    key: "calendar",
     title: "Set your calendar availability",
     detail: "Tell us when you want customers to be able to book appointments.",
     priority: "medium",
     href: "/dashboard/calendar",
+    hideWhen: () => false,
   },
 ];
 
 const priorityCls: Record<string, string> = {
   high:   "text-[#FF6B61] bg-[#FF6B61]/10 border-[#FF6B61]/20",
   medium: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-  low:    "text-blue-400 bg-blue-400/10 border-blue-400/20",
 };
-
-const QUICK_STATS = [
-  { label: "Page views",     value: "—",     note: "Available at launch",  color: "text-blue-400" },
-  { label: "Revenue (MRR)",  value: "—",     note: "After Stripe connect",  color: "text-emerald-400" },
-  { label: "Active users",   value: "—",     note: "Available at launch",  color: "text-violet-400" },
-  { label: "Bookings",       value: "0",     note: "Set availability first", color: "text-[#FF6B61]" },
-];
 
 const QUICK_LINKS = [
   { label: "View dev pipeline",  href: "/dashboard/pipeline",  color: "text-[#FF6B61]" },
@@ -68,8 +68,28 @@ const QUICK_LINKS = [
   { label: "Manage calendar",    href: "/dashboard/calendar",   color: "text-violet-400" },
 ];
 
+interface ClientData {
+  name: string;
+  plan: string;
+  status: string;
+  pipelineStage: number;
+  stripeOnboardingComplete: boolean;
+  stripeAccountId?: string;
+  customDomain?: string;
+}
+
+interface StatsData {
+  bookings: { confirmed: number; pending: number; total: number };
+  revenue: { mrr: number };
+  users: { total: number };
+  pageViews: { total: number };
+}
+
 export default function DashboardPage() {
   const [msgOpen, setMsgOpen] = useState(false);
+  const [client, setClient] = useState<ClientData | null>(null);
+  const [stats, setStats] = useState<StatsData | null>(null);
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -77,14 +97,56 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-  const activeIdx = STAGES.findIndex((s) => s.status === "active");
+  useEffect(() => {
+    fetch("/api/clients/me").then((r) => r.json()).then(setClient).catch(() => null);
+    fetch("/api/me/stats").then((r) => r.json()).then(setStats).catch(() => null);
+  }, []);
+
+  const stageIdx = client?.pipelineStage ?? 2;
+  const stages = STAGE_LABELS.map((label, i) => ({
+    label,
+    status: i < stageIdx ? "done" : i === stageIdx ? "active" : "pending",
+  }));
+
+  const actions = client
+    ? ALL_ACTIONS.filter((a) => !a.hideWhen(client))
+    : ALL_ACTIONS;
+
+  const quickStats = [
+    {
+      label: "Page views",
+      value: stats ? stats.pageViews.total.toLocaleString() : "â€”",
+      note: stats ? "All time" : "Loadingâ€¦",
+      color: "text-blue-400",
+    },
+    {
+      label: "Revenue (MRR)",
+      value: stats ? (stats.revenue.mrr > 0 ? `$${stats.revenue.mrr.toLocaleString()}` : "â€”") : "â€”",
+      note: stats ? (stats.revenue.mrr > 0 ? "This month" : "After Stripe connect") : "Loadingâ€¦",
+      color: "text-emerald-400",
+    },
+    {
+      label: "Active users",
+      value: stats ? stats.users.total.toLocaleString() : "â€”",
+      note: stats ? (stats.users.total > 0 ? "In your app" : "Available at launch") : "Loadingâ€¦",
+      color: "text-violet-400",
+    },
+    {
+      label: "Bookings",
+      value: stats ? stats.bookings.confirmed.toString() : "â€”",
+      note: stats ? `${stats.bookings.pending} pending` : "Loadingâ€¦",
+      color: "text-[#FF6B61]",
+    },
+  ];
 
   return (
     <div className="px-8 py-8 max-w-6xl">
       <MessageModal open={msgOpen} onClose={() => setMsgOpen(false)} />
       {/* Header */}
       <motion.div variants={fade(0)} initial="hidden" animate="visible" className="mb-8">
-        <h1 className="text-xl font-semibold text-white">Welcome back 👋</h1>
+        <h1 className="text-xl font-semibold text-white">
+          {client ? `Welcome back, ${client.name.split(" ")[0]} ðŸ‘‹` : "Welcome back ðŸ‘‹"}
+        </h1>
         <p className="text-sm text-white/40 mt-0.5">{today}</p>
       </motion.div>
 
@@ -95,7 +157,7 @@ export default function DashboardPage() {
         animate="visible"
         className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
       >
-        {QUICK_STATS.map((s) => (
+        {quickStats.map((s) => (
           <div key={s.label} className="bg-white/3 border border-white/7 rounded-2xl p-5">
             <p className="text-xs text-white/40 mb-2">{s.label}</p>
             <p className={`text-2xl font-bold ${s.color} mb-1`}>{s.value}</p>
@@ -119,20 +181,20 @@ export default function DashboardPage() {
               <div>
                 <h2 className="text-sm font-semibold text-white">Development Pipeline</h2>
                 <p className="text-xs text-white/35 mt-0.5">
-                  Currently in stage {activeIdx + 1} of {STAGES.length} — {STAGES[activeIdx]?.label}
+                  Currently in stage {stageIdx + 1} of {stages.length} â€” {STAGE_LABELS[stageIdx]}
                 </p>
               </div>
               <Link
                 href="/dashboard/pipeline"
                 className="text-xs text-[#FF6B61] hover:text-[#ff9a8b] transition-colors font-medium"
               >
-                Full details →
+                Full details â†’
               </Link>
             </div>
 
             {/* Progress track */}
             <div className="relative flex items-center gap-0 mb-2">
-              {STAGES.map((stage, i) => (
+              {stages.map((stage, i) => (
                 <div key={stage.label} className="flex items-center flex-1 last:flex-none">
                   <div className="relative flex flex-col items-center">
                     <div
@@ -153,10 +215,10 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  {i < STAGES.length - 1 && (
+                  {i < stages.length - 1 && (
                     <div
                       className={`flex-1 h-0.5 mx-1 ${
-                        i < activeIdx ? "bg-emerald-400/60" : "bg-white/6"
+                        i < stageIdx ? "bg-emerald-400/60" : "bg-white/6"
                       }`}
                     />
                   )}
@@ -164,7 +226,7 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="flex justify-between mt-2">
-              {STAGES.map((stage) => (
+              {stages.map((stage) => (
                 <div key={stage.label} className="flex-1 text-center">
                   <p
                     className={`text-[9px] leading-tight ${
@@ -195,12 +257,12 @@ export default function DashboardPage() {
                 <p className="text-xs text-white/35 mt-0.5">Complete these to move your project forward</p>
               </div>
               <span className="text-xs bg-[#FF6B61]/15 text-[#FF6B61] font-semibold px-2.5 py-1 rounded-full border border-[#FF6B61]/20">
-                {ACTIONS.filter((a) => a.priority === "high").length} urgent
+                {actions.filter((a) => a.priority === "high").length} urgent
               </span>
             </div>
             <div className="space-y-3">
-              {ACTIONS.map((action) => (
-                <Link key={action.title} href={action.href}>
+              {actions.map((action) => (
+                <Link key={action.key} href={action.href}>
                   <div className="flex items-start gap-4 p-4 bg-white/2 border border-white/6 rounded-xl hover:border-white/12 hover:bg-white/4 transition-all cursor-pointer group">
                     <div
                       className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
@@ -275,35 +337,56 @@ export default function DashboardPage() {
             </motion.button>
           </motion.div>
 
-          {/* DB status card */}
-          <motion.div
-            variants={fade(0.22)}
-            initial="hidden"
-            animate="visible"
-            className="bg-white/2 border border-white/6 rounded-2xl p-5"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <ellipse cx="12" cy="5" rx="9" ry="3" />
-                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-              </svg>
-              <span className="text-xs font-semibold text-white/60">Database</span>
-              <span className="ml-auto flex items-center gap-1 text-[10px] text-amber-400 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-                Pending setup
-              </span>
-            </div>
-            <p className="text-xs text-white/35 leading-5">
-              Your personal MongoDB collection will be provisioned when database connection is configured.
-              Your data will be accessible here.
-            </p>
-            <Link href="/dashboard/data" className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-3 block font-medium">
-              Preview data structure →
-            </Link>
-          </motion.div>
+          {/* Plan badge */}
+          {client && (
+            <motion.div
+              variants={fade(0.2)}
+              initial="hidden"
+              animate="visible"
+              className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
+                <span className="text-xs font-semibold text-white/60">Your plan</span>
+                <span className="ml-auto text-xs font-semibold text-blue-400">{client.plan}</span>
+              </div>
+              <p className="text-xs text-white/35 leading-5">
+                Status: <span className="text-white/60 capitalize">{client.status}</span>
+              </p>
+              <Link href="/dashboard/data" className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-3 block font-medium">
+                Browse your data →
+              </Link>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+            <motion.div
+              variants={fade(0.22)}
+              initial="hidden"
+              animate="visible"
+              className="bg-white/2 border border-white/6 rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
+                <span className="text-xs font-semibold text-white/60">Your plan</span>
+                <span className="ml-auto text-xs font-semibold text-blue-400">{client.plan}</span>
+              </div>
+              <p className="text-xs text-white/35 leading-5">
+                Status: <span className="text-white/60 capitalize">{client.status}</span>
+              </p>
+              <Link href="/dashboard/data" className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-3 block font-medium">
+                Browse your data â†’
+              </Link>
+            </motion.div>
+          )}

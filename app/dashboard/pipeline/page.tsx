@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const fade = (d = 0) => ({
@@ -8,12 +8,11 @@ const fade = (d = 0) => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: d } },
 });
 
-/* ─── Dev stages ─────────────────────────────────────────── */
-const STAGES = [
+/* ─── Dev stages (config only — status derived from DB) ──────────────────── */
+const STAGE_CONFIG = [
   {
     num: "01",
     label: "Discovery Call",
-    status: "done" as const,
     date: "Mar 28, 2026",
     summary: "Scope, goals, and tech stack confirmed. Requirements documented.",
     tasks: [
@@ -26,7 +25,6 @@ const STAGES = [
   {
     num: "02",
     label: "Design Approval",
-    status: "done" as const,
     date: "Apr 1, 2026",
     summary: "Brand identity, color palette, and page layouts approved.",
     tasks: [
@@ -39,7 +37,6 @@ const STAGES = [
   {
     num: "03",
     label: "Development",
-    status: "active" as const,
     date: "In progress",
     summary: "Core platform and all pages are being built. Integrations being wired.",
     tasks: [
@@ -54,7 +51,6 @@ const STAGES = [
   {
     num: "04",
     label: "Testing & QA",
-    status: "pending" as const,
     date: "Upcoming",
     summary: "End-to-end testing, mobile QA, performance audit, and security review.",
     tasks: [
@@ -68,7 +64,6 @@ const STAGES = [
   {
     num: "05",
     label: "Launch",
-    status: "pending" as const,
     date: "Upcoming",
     summary: "Domain configuration, SSL, final deployment, and go-live handoff.",
     tasks: [
@@ -81,7 +76,6 @@ const STAGES = [
   {
     num: "06",
     label: "Live & Growing",
-    status: "pending" as const,
     date: "Your goal",
     summary: "Platform is live. Real users, real revenue, real analytics.",
     tasks: [
@@ -191,8 +185,37 @@ const priorityLabel: Record<string, string> = {
 export default function PipelinePage() {
   const [expanded, setExpanded] = useState<string | null>("03");
   const [expandedStep, setExpandedStep] = useState<string | null>("stripe");
-  const activeIdx = STAGES.findIndex((s) => s.status === "active");
-  const doneCount = STAGES.filter((s) => s.status === "done").length;
+  const [pipelineStage, setPipelineStage] = useState(2);
+  const [stripeComplete, setStripeComplete] = useState(false);
+  const [hasCustomDomain, setHasCustomDomain] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/clients/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data.pipelineStage === "number") setPipelineStage(data.pipelineStage);
+        if (data.stripeOnboardingComplete) setStripeComplete(true);
+        if (data.customDomain) setHasCustomDomain(true);
+      })
+      .catch(() => null);
+  }, []);
+
+  // Derive stage statuses from DB value
+  type StageStatus = "done" | "active" | "pending";
+  const STAGES = STAGE_CONFIG.map((s, i) => ({
+    ...s,
+    status: (i < pipelineStage ? "done" : i === pipelineStage ? "active" : "pending") as StageStatus,
+  }));
+
+  const activeIdx = pipelineStage;
+  const doneCount = pipelineStage;
+
+  // Filter USER_STEPS based on what client has already completed
+  const visibleSteps = USER_STEPS.filter((s) => {
+    if (s.id === "stripe" && stripeComplete) return false;
+    if (s.id === "domain" && hasCustomDomain) return false;
+    return true;
+  });
 
   return (
     <div className="px-8 py-8 max-w-5xl">
@@ -352,7 +375,7 @@ export default function PipelinePage() {
         </div>
 
         <div className="space-y-4">
-          {USER_STEPS.map((step) => {
+          {visibleSteps.map((step) => {
             const isExpanded = expandedStep === step.id;
             return (
               <div key={step.id} className={`border rounded-2xl overflow-hidden ${step.bg}`}>

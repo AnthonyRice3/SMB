@@ -1,43 +1,67 @@
-"use client";
+﻿"use client";
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const stats = [
-  { label: 'MRR',                  value: '$18,320',  change: '+8.4%',  note: 'vs last month' },
-  { label: 'ARR',                  value: '$219,840', change: '+8.4%',  note: 'projected'     },
-  { label: 'Total Revenue',        value: '$142,800', change: '+22%',   note: 'all time'      },
-  { label: 'Avg Revenue / User',   value: '$74.2',    change: '+5.1%',  note: 'per user'      },
-];
+const PLAN_PRICE: Record<string, number> = { free: 0, starter: 49, pro: 299, enterprise: 899 };
+const PLAN_COLOR: Record<string, string> = {
+  enterprise: 'bg-orange-400',
+  pro:        'bg-violet-400',
+  starter:    'bg-blue-400',
+  free:       'bg-white/20',
+};
 
-const monthly = [
-  { month: 'Nov', value: 12400 },
-  { month: 'Dec', value: 13800 },
-  { month: 'Jan', value: 14100 },
-  { month: 'Feb', value: 15200 },
-  { month: 'Mar', value: 16900 },
-  { month: 'Apr', value: 18320 },
-];
+interface AdminStats {
+  total: number;
+  planCounts: Record<string, number>;
+  mrr: number;
+  arr: number;
+  monthlyRevenue: number[];
+}
 
-const plans = [
-  { name: 'Enterprise',  users: 18,  revenue: 16182, color: 'bg-orange-400' },
-  { name: 'Pro',         users: 112, revenue: 33488, color: 'bg-violet-400' },
-  { name: 'Starter',     users: 89,  revenue: 4361,  color: 'bg-blue-400'   },
-  { name: 'Free / Trial',users: 28,  revenue: 0,     color: 'bg-white/20'   },
-];
+function last6MonthLabels() {
+  const labels: string[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toLocaleString('en-US', { month: 'short' }));
+  }
+  return labels;
+}
 
-const transactions = [
-  { user: 'VeloApps',      type: 'Payout',       amount: '+$3,400', date: 'Apr 1, 2026', status: 'settled' },
-  { user: 'NexaScale',     type: 'Subscription', amount: '+$49',    date: 'Apr 1, 2026', status: 'settled' },
-  { user: 'Acme Corp',     type: 'Payout',       amount: '+$1,200', date: 'Apr 2, 2026', status: 'pending' },
-  { user: 'DataForge',     type: 'Subscription', amount: '+$299',   date: 'Apr 1, 2026', status: 'settled' },
-  { user: 'PixelWave',     type: 'Plan Upgrade', amount: '+$250',   date: 'Apr 2, 2026', status: 'settled' },
-  { user: 'BuildFast Inc', type: 'Subscription', amount: '+$299',   date: 'Mar 31, 2026',status: 'settled' },
-];
-
-const maxRev   = Math.max(...monthly.map((m) => m.value));
-const maxUsers = Math.max(...plans.map((p) => p.users));
+const MONTH_LABELS = last6MonthLabels();
 
 export default function MonetizationPage() {
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/stats')
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const mrr  = stats?.mrr ?? 0;
+  const arr  = stats?.arr ?? 0;
+  const total = stats?.total ?? 0;
+  const arpu  = total > 0 ? (mrr / total) : 0;
+
+  const monthly = stats?.monthlyRevenue ?? Array(6).fill(0);
+  const maxRev  = Math.max(...monthly, 1);
+
+  const planCounts = stats?.planCounts ?? {};
+  const planRows = Object.entries(planCounts)
+    .map(([plan, count]) => ({
+      name: plan.charAt(0).toUpperCase() + plan.slice(1),
+      key: plan,
+      users: count,
+      revenue: (PLAN_PRICE[plan] ?? 0) * count,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const maxUsers = Math.max(...planRows.map((p) => p.users), 1);
+
   return (
     <div className="px-8 py-8">
       <div className="mb-8">
@@ -47,7 +71,12 @@ export default function MonetizationPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((s, i) => (
+        {[
+          { label: 'MRR',               value: loading ? 'â€”' : `$${mrr.toLocaleString()}` },
+          { label: 'ARR',               value: loading ? 'â€”' : `$${arr.toLocaleString()}` },
+          { label: 'Total Clients',     value: loading ? 'â€”' : total.toString()           },
+          { label: 'Avg Revenue / User', value: loading ? 'â€”' : `$${arpu.toFixed(0)}`     },
+        ].map((s, i) => (
           <motion.div
             key={s.label}
             initial={{ opacity: 0, y: 12 }}
@@ -57,10 +86,6 @@ export default function MonetizationPage() {
           >
             <p className="text-xs text-white/40 mb-2">{s.label}</p>
             <p className="text-2xl font-bold text-white tracking-tight">{s.value}</p>
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="text-xs font-medium text-emerald-400">{s.change}</span>
-              <span className="text-xs text-white/25">{s.note}</span>
-            </div>
           </motion.div>
         ))}
       </div>
@@ -71,15 +96,16 @@ export default function MonetizationPage() {
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6"
         >
-          <h2 className="text-sm font-medium text-white mb-6">Monthly Revenue</h2>
+          <h2 className="text-sm font-medium text-white mb-6">Monthly Revenue (6 mo)</h2>
           <div className="flex items-end gap-3 h-36">
-            {monthly.map((m, i) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-xs text-white/40">${(m.value / 1000).toFixed(1)}k</span>
+            {monthly.map((v, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                {v > 0 && <span className="text-xs text-white/40">${(v / 1000).toFixed(1)}k</span>}
                 <motion.div
                   className="w-full rounded-t-lg"
                   style={{
-                    height: `${(m.value / maxRev) * 100}%`,
+                    height: `${(v / maxRev) * 100}%`,
+                    minHeight: '4px',
                     background: i === monthly.length - 1 ? '#FF6B61' : 'rgba(255,107,97,0.25)',
                     transformOrigin: 'bottom',
                   }}
@@ -87,7 +113,7 @@ export default function MonetizationPage() {
                   animate={{ scaleY: 1 }}
                   transition={{ delay: 0.3 + i * 0.07, duration: 0.5 }}
                 />
-                <span className="text-[11px] text-white/30">{m.month}</span>
+                <span className="text-[11px] text-white/30">{MONTH_LABELS[i]}</span>
               </div>
             ))}
           </div>
@@ -99,28 +125,34 @@ export default function MonetizationPage() {
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6"
         >
           <h2 className="text-sm font-medium text-white mb-6">Plan Breakdown</h2>
-          <div className="space-y-5">
-            {plans.map((p) => (
-              <div key={p.name}>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-white/70">{p.name}</span>
-                  <span className="text-white/40 text-xs">{p.users} users · ${p.revenue.toLocaleString()}/mo</span>
+          {planRows.length === 0 ? (
+            <p className="text-sm text-white/25 text-center py-8">No clients yet.</p>
+          ) : (
+            <div className="space-y-5">
+              {planRows.map((p) => (
+                <div key={p.name}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-white/70">{p.name}</span>
+                    <span className="text-white/40 text-xs">
+                      {p.users} user{p.users !== 1 ? 's' : ''} Â· ${p.revenue.toLocaleString()}/mo
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full rounded-full ${PLAN_COLOR[p.key] ?? 'bg-white/20'}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(p.users / maxUsers) * 100}%` }}
+                      transition={{ delay: 0.4, duration: 0.7 }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
-                  <motion.div
-                    className={`h-full rounded-full ${p.color}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(p.users / maxUsers) * 100}%` }}
-                    transition={{ delay: 0.4, duration: 0.7 }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
 
-      {/* Transactions table */}
+      {/* Transactions placeholder */}
       <motion.div
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden"
@@ -128,32 +160,9 @@ export default function MonetizationPage() {
         <div className="px-6 py-4 border-b border-white/[0.06]">
           <h2 className="text-sm font-medium text-white">Recent Transactions</h2>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/[0.04]">
-              {['Account', 'Type', 'Amount', 'Date', 'Status'].map((h) => (
-                <th key={h} className="px-5 py-3 text-left text-xs font-medium text-white/30">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((t, i) => (
-              <tr key={i} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
-                <td className="px-5 py-3.5 text-white">{t.user}</td>
-                <td className="px-5 py-3.5 text-white/50">{t.type}</td>
-                <td className="px-5 py-3.5 font-medium text-emerald-400">{t.amount}</td>
-                <td className="px-5 py-3.5 text-white/40">{t.date}</td>
-                <td className="px-5 py-3.5">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    t.status === 'settled'
-                      ? 'text-emerald-400 bg-emerald-400/10'
-                      : 'text-yellow-400 bg-yellow-400/10'
-                  }`}>{t.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="px-6 py-10 text-center text-white/25 text-sm">
+          Transaction history will appear here once Stripe webhooks are connected.
+        </div>
       </motion.div>
     </div>
   );

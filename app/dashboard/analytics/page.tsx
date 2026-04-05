@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const fade = (d = 0) => ({
@@ -8,40 +8,58 @@ const fade = (d = 0) => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: d } },
 });
 
-/* ─── Mock data ──────────────────────────────────────────── */
-const MONTHLY_REVENUE = [820, 1040, 980, 1320, 1180, 1540, 1420, 1830, 1760, 2100, 1940, 2340];
-const MONTHLY_LABELS  = ["May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
+function last12MonthLabels() {
+  const labels: string[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels.push(d.toLocaleString("en-US", { month: "short" }));
+  }
+  return labels;
+}
 
-const PAGE_VIEWS = [1240, 1680, 1520, 2100, 1840, 2560, 2280, 3100, 2840, 3600, 3200, 4120];
+const MONTHLY_LABELS = last12MonthLabels();
 
-const TOP_PAGES = [
-  { page: "/",             views: 4120, change: "+18%", positive: true },
-  { page: "/how-it-works", views: 1840, change: "+42%", positive: true },
-  { page: "/contact",      views: 1210, change: "+31%", positive: true },
-  { page: "/about",        views: 680,  change: "+8%",  positive: true },
-  { page: "/dashboard",    views: 310,  change: "-5%",  positive: false },
-];
-
-const TRANSACTIONS = [
-  { name: "Jane Doe",     plan: "Pro",        amount: "$29.00",  date: "Apr 1, 2026",  status: "paid" },
-  { name: "Mike Torres",  plan: "Enterprise", amount: "$99.00",  date: "Apr 1, 2026",  status: "paid" },
-  { name: "Bob Smith",    plan: "Pro",        amount: "$29.00",  date: "Apr 1, 2026",  status: "paid" },
-  { name: "Chris Nguyen", plan: "Pro",        amount: "$29.00",  date: "Mar 29, 2026", status: "paid" },
-  { name: "Sara Lee",     plan: "Free",       amount: "$0.00",   date: "Mar 28, 2026", status: "free" },
-];
+interface StatsData {
+  revenue: { mrr: number; arr: number; total: number; monthly: number[]; transactions: { name: string; plan: string; amount: number; date: string; status: string }[] };
+  pageViews: { total: number; monthly: number[]; topPages: { page: string; views: number }[] };
+  users: { total: number };
+  bookings: { total: number };
+}
 
 export default function AnalyticsPage() {
   const [metricTab, setMetricTab] = useState<"revenue" | "traffic">("revenue");
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const maxRev   = Math.max(...MONTHLY_REVENUE);
-  const maxViews = Math.max(...PAGE_VIEWS);
-  const totalMRR   = MONTHLY_REVENUE[MONTHLY_REVENUE.length - 1];
-  const totalARR   = totalMRR * 12;
-  const totalViews = PAGE_VIEWS.reduce((a, b) => a + b, 0);
-  const revGrowth  = (((MONTHLY_REVENUE[11] - MONTHLY_REVENUE[10]) / MONTHLY_REVENUE[10]) * 100).toFixed(1);
-  const viewGrowth = (((PAGE_VIEWS[11] - PAGE_VIEWS[10]) / PAGE_VIEWS[10]) * 100).toFixed(1);
+  useEffect(() => {
+    fetch("/api/me/stats")
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
 
-  const bars = metricTab === "revenue" ? MONTHLY_REVENUE : PAGE_VIEWS;
+  const revenueMonthly = stats?.revenue.monthly ?? Array(12).fill(0);
+  const viewsMonthly   = stats?.pageViews.monthly ?? Array(12).fill(0);
+  const mrr      = stats?.revenue.mrr ?? 0;
+  const arr      = stats?.revenue.arr ?? 0;
+  const totalViews = stats?.pageViews.total ?? 0;
+  const topPages   = stats?.pageViews.topPages ?? [];
+  const transactions = stats?.revenue.transactions ?? [];
+
+  const maxRev   = Math.max(...revenueMonthly, 1);
+  const maxViews = Math.max(...viewsMonthly, 1);
+
+  const prevRev  = revenueMonthly[10] ?? 0;
+  const curRev   = revenueMonthly[11] ?? 0;
+  const revGrowth = prevRev > 0 ? (((curRev - prevRev) / prevRev) * 100).toFixed(1) : null;
+
+  const prevViews = viewsMonthly[10] ?? 0;
+  const curViews  = viewsMonthly[11] ?? 0;
+  const viewGrowth = prevViews > 0 ? (((curViews - prevViews) / prevViews) * 100).toFixed(1) : null;
+
+  const bars = metricTab === "revenue" ? revenueMonthly : viewsMonthly;
   const maxBar = metricTab === "revenue" ? maxRev : maxViews;
   const barColor = metricTab === "revenue" ? "bg-emerald-400/50 hover:bg-emerald-400" : "bg-blue-400/50 hover:bg-blue-400";
 
@@ -51,8 +69,8 @@ export default function AnalyticsPage() {
       <motion.div variants={fade(0)} initial="hidden" animate="visible" className="mb-2">
         <h1 className="text-xl font-semibold text-white">Analytics & Revenue</h1>
         <p className="text-sm text-white/40 mt-1">
-          Your app&apos;s performance metrics.{" "}
-          <span className="text-amber-400">Sample data shown</span> — live metrics activate at launch.
+          Your app&apos;s performance metrics.
+          {loading && <span className="text-white/25"> Loading…</span>}
         </p>
       </motion.div>
 
@@ -64,10 +82,10 @@ export default function AnalyticsPage() {
         className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-8"
       >
         {[
-          { label: "MRR",          value: `$${totalMRR.toLocaleString()}`,   change: `+${revGrowth}%`,   positive: true,  color: "text-emerald-400" },
-          { label: "ARR (12-mo projection)", value: `$${totalARR.toLocaleString()}`, change: "Annualized", positive: true, color: "text-emerald-400" },
-          { label: "Page views (last 12 mo)", value: totalViews.toLocaleString(), change: `+${viewGrowth}% last mo`, positive: true, color: "text-blue-400" },
-          { label: "Conversion rate", value: "3.8%", change: "+0.4% this mo", positive: true, color: "text-violet-400" },
+          { label: "MRR",          value: loading ? "—" : `$${mrr.toLocaleString()}`,   change: revGrowth ? `${Number(revGrowth) >= 0 ? "+" : ""}${revGrowth}%` : "—",   positive: revGrowth !== null && Number(revGrowth) >= 0,  color: "text-emerald-400" },
+          { label: "ARR (12-mo projection)", value: loading ? "—" : `$${arr.toLocaleString()}`, change: "Annualized", positive: true, color: "text-emerald-400" },
+          { label: "Page views (last 12 mo)", value: loading ? "—" : totalViews.toLocaleString(), change: viewGrowth ? `${Number(viewGrowth) >= 0 ? "+" : ""}${viewGrowth}% last mo` : "—", positive: viewGrowth !== null && Number(viewGrowth) >= 0, color: "text-blue-400" },
+          { label: "App users", value: loading ? "—" : (stats?.users.total ?? 0).toLocaleString(), change: "Total", positive: true, color: "text-violet-400" },
         ].map(({ label, value, change, positive, color }) => (
           <div key={label} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
             <p className="text-xs text-white/40 mb-2">{label}</p>
@@ -145,31 +163,32 @@ export default function AnalyticsPage() {
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6"
         >
           <h2 className="text-sm font-semibold text-white mb-4">Top pages</h2>
-          <div className="space-y-3">
-            {TOP_PAGES.map(({ page, views, change, positive }) => {
-              const pct = (views / TOP_PAGES[0].views) * 100;
-              return (
-                <div key={page}>
-                  <div className="flex justify-between items-center mb-1">
-                    <code className="text-xs text-white/70 font-mono">{page}</code>
-                    <div className="flex items-center gap-2">
+          {topPages.length === 0 ? (
+            <p className="text-sm text-white/25 text-center py-6">No page view data yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {topPages.map(({ page, views }) => {
+                const pct = (views / topPages[0].views) * 100;
+                return (
+                  <div key={page}>
+                    <div className="flex justify-between items-center mb-1">
+                      <code className="text-xs text-white/70 font-mono">{page}</code>
                       <span className="text-xs text-white/50">{views.toLocaleString()}</span>
-                      <span className={`text-[10px] font-semibold ${positive ? "text-emerald-400" : "text-red-400"}`}>{change}</span>
+                    </div>
+                    <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-blue-400/50 rounded-full"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${pct}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7, delay: 0.1 }}
+                      />
                     </div>
                   </div>
-                  <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-blue-400/50 rounded-full"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${pct}%` }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.7, delay: 0.1 }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
 
         {/* Revenue breakdown */}
@@ -179,35 +198,18 @@ export default function AnalyticsPage() {
           animate="visible"
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6"
         >
-          <h2 className="text-sm font-semibold text-white mb-4">Plan breakdown</h2>
-          <div className="space-y-3 mb-5">
+          <h2 className="text-sm font-semibold text-white mb-4">Revenue summary</h2>
+          <div className="space-y-4">
             {[
-              { plan: "Enterprise", count: 1,  mrr: "$99",  pct: 42, color: "bg-[#FF6B61]" },
-              { plan: "Pro",        count: 3,  mrr: "$87",  pct: 37, color: "bg-violet-400" },
-              { plan: "Free",       count: 2,  mrr: "$0",   pct: 0,  color: "bg-white/20" },
-            ].map(({ plan, count, mrr, pct, color }) => (
-              <div key={plan}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-white/70">{plan}</span>
-                  <span className="text-xs text-white/40">{count} user{count !== 1 ? "s" : ""}  ·  {mrr}/mo</span>
-                </div>
-                <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
-                  <motion.div
-                    className={`h-full ${color} rounded-full`}
-                    initial={{ width: 0 }}
-                    whileInView={{ width: `${pct}%` }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.7, delay: 0.15 }}
-                  />
-                </div>
+              { label: "MRR",  value: `$${mrr.toLocaleString()}`, color: "text-emerald-400" },
+              { label: "ARR",  value: `$${arr.toLocaleString()}`, color: "text-emerald-400" },
+              { label: "Total collected", value: `$${(stats?.revenue.total ?? 0).toLocaleString()}`, color: "text-white" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="flex justify-between items-center py-2 border-b border-white/[0.05]">
+                <span className="text-xs text-white/50">{label}</span>
+                <span className={`text-sm font-bold ${color}`}>{loading ? "—" : value}</span>
               </div>
             ))}
-          </div>
-          <div className="pt-4 border-t border-white/[0.06]">
-            <div className="flex justify-between">
-              <span className="text-xs text-white/40">Total MRR</span>
-              <span className="text-sm font-bold text-emerald-400">$186 <span className="text-white/25 font-normal text-xs">/ month</span></span>
-            </div>
           </div>
         </motion.div>
       </div>
@@ -222,27 +224,33 @@ export default function AnalyticsPage() {
         <div className="px-6 py-4 border-b border-white/[0.06]">
           <h2 className="text-sm font-semibold text-white">Recent transactions</h2>
         </div>
-        <div>
-          {TRANSACTIONS.map((t, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-4 px-6 py-3.5 ${i < TRANSACTIONS.length - 1 ? "border-b border-white/[0.04]" : ""} hover:bg-white/[0.015] transition-colors`}
-            >
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">{t.name}</p>
-                <p className="text-xs text-white/30">{t.date}</p>
+        {transactions.length === 0 ? (
+          <div className="px-6 py-10 text-center text-white/25 text-sm">
+            Transactions will appear here once revenue data is recorded.
+          </div>
+        ) : (
+          <div>
+            {transactions.map((t, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-4 px-6 py-3.5 ${i < transactions.length - 1 ? "border-b border-white/[0.04]" : ""} hover:bg-white/[0.015] transition-colors`}
+              >
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">{t.name}</p>
+                  <p className="text-xs text-white/30">{new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  t.plan === "Enterprise" ? "bg-[#FF6B61]/10 text-[#FF6B61]" : t.plan === "Pro" ? "bg-violet-400/10 text-violet-400" : "bg-white/[0.05] text-white/30"
+                }`}>
+                  {t.plan}
+                </span>
+                <span className={`text-sm font-bold ${t.status === "paid" ? "text-emerald-400" : "text-white/25"}`}>
+                  ${(t.amount / 100).toFixed(2)}
+                </span>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                t.plan === "Enterprise" ? "bg-[#FF6B61]/10 text-[#FF6B61]" : t.plan === "Pro" ? "bg-violet-400/10 text-violet-400" : "bg-white/[0.05] text-white/30"
-              }`}>
-                {t.plan}
-              </span>
-              <span className={`text-sm font-bold ${t.status === "paid" ? "text-emerald-400" : "text-white/25"}`}>
-                {t.amount}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </div>
   );
