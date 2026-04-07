@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const planColor: Record<string, string> = {
@@ -26,6 +27,7 @@ interface ClientRow {
 }
 
 export default function UsersPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -101,7 +103,8 @@ export default function UsersPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.04 }}
-                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] transition-colors"
+                onClick={() => router.push(`/admin/users/${u._id}`)}
+                className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.04] transition-colors cursor-pointer"
               >
                 <td className="px-5 py-4">
                   <div className="font-medium text-white">{u.name}</div>
