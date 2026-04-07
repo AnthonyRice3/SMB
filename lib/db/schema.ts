@@ -49,6 +49,8 @@ export interface ClientDoc {
   stripeSubscriptionId?: string;
   /** Clerk organization/user ID — wired after Clerk integration */
   clerkUserId?: string;
+  /** Secret API key used by the client's app to call SAGAH's v1 API */
+  apiKey?: string;
   /** True once the 4 per-client collections have been provisioned */
   collectionsProvisioned: boolean;
   createdAt: Date;

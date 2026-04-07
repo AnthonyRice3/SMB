@@ -34,6 +34,7 @@ export async function GET() {
           stripeOnboardingComplete: 1,
           stripeSubscriptionId: 1,
           collectionsProvisioned: 1,
+          apiKey: 1,
           createdAt: 1,
         },
       }
@@ -78,10 +79,19 @@ export async function GET() {
             stripeOnboardingComplete: 1,
             stripeSubscriptionId: 1,
             collectionsProvisioned: 1,
+            apiKey: 1,
             createdAt: 1,
           },
         }
       );
+    }
+
+    // Backfill: generate an API key for existing clients that predate the feature
+    if (client && !client.apiKey) {
+      const { randomBytes } = await import("crypto");
+      const apiKey = `sgk_${randomBytes(20).toString("hex")}`;
+      await clients.updateOne({ clerkUserId: userId }, { $set: { apiKey, updatedAt: new Date() } });
+      (client as Record<string, unknown>).apiKey = apiKey;
     }
 
     return NextResponse.json(client);

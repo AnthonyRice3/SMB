@@ -19,6 +19,7 @@
  */
 
 import clientPromise from "@/lib/mongodb";
+import { randomBytes } from "crypto";
 import type {
   AppUserDoc,
   AppEventDoc,
@@ -200,6 +201,7 @@ export async function createClient(data: {
   }
 
   const now = new Date();
+  const apiKey = `sgk_${randomBytes(20).toString("hex")}`;
   const doc: ClientDoc = {
     clientId,
     name: data.name,
@@ -208,6 +210,7 @@ export async function createClient(data: {
     status: "trial",
     pipelineStage: 0,
     stripeOnboardingComplete: false,
+    apiKey,
     collectionsProvisioned: false,
     createdAt: now,
     updatedAt: now,
@@ -242,4 +245,14 @@ export async function getClientByClerkUserId(
 ): Promise<ClientDoc | null> {
   const clients = await getClientsCollection();
   return clients.findOne({ clerkUserId: userId }) as Promise<ClientDoc | null>;
+}
+
+// ─── Convenience: look up client by API key ──────────────────────────────────
+
+export async function getClientByApiKey(
+  apiKey: string
+): Promise<ClientDoc | null> {
+  if (!apiKey?.startsWith("sgk_")) return null;
+  const clients = await getClientsCollection();
+  return clients.findOne({ apiKey }) as Promise<ClientDoc | null>;
 }
