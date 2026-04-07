@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
           $set: {
             name: (name as string).trim(),
             lastSeenAt: now,
-            ...(avatarUrl ? { avatarUrl } : {}),
-            ...(plan ? { plan } : {}),
-            ...(metadata && typeof metadata === "object" ? { metadata } : {}),
+            ...(avatarUrl ? { avatarUrl: avatarUrl as string } : {}),
+            ...(plan ? { plan: plan as string } : {}),
+            ...(metadata && typeof metadata === "object" ? { metadata: metadata as Record<string, unknown> } : {}),
           },
           $inc: { pageViews: 1 },
         }
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
       ...(plan ? { plan: plan as string } : {}),
       ...(metadata && typeof metadata === "object" ? { metadata: metadata as Record<string, unknown> } : {}),
       pageViews: 1,
+      sessionCount: 1,
       firstSeenAt: now,
       lastSeenAt: now,
     });
