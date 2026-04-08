@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser, UserButton } from '@clerk/nextjs';
 import AuthModal from './AuthModal';
 
@@ -19,11 +20,7 @@ export default function Nav() {
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-[#FF6B61] flex items-center justify-center flex-shrink-0">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1L11 4.5V9L6 11L1 8.5V4L6 1Z" fill="white" />
-            </svg>
-          </div>
+          <Image src="/logo.png" alt="SAGAH" width={24} height={24} className="w-6 h-6 object-contain" />
           <span className="font-semibold text-white tracking-tight">SAGAH</span>
         </div>
 

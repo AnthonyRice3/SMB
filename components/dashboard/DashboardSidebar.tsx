@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const navItems = [
   {
@@ -95,7 +96,7 @@ export default function DashboardSidebar() {
       {/* Logo + user */}
       <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
         <Link href="/" className="flex items-center gap-2 mb-4">
-          <div className="w-5 h-5 rounded-md bg-[#FF6B61] shrink-0" />
+          <Image src="/logo.png" alt="SAGAH" width={20} height={20} className="w-5 h-5 object-contain" />
           <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
         </Link>
         {/* User identity */}

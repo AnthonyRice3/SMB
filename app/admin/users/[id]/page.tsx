@@ -46,6 +46,7 @@ interface ClientData {
   pipelineStage: number;
   createdAt: string;
   stripeOnboardingComplete?: boolean;
+  apiKey?: string;
 }
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +67,8 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [replyText, setReplyText]           = useState<Record<string, string>>({});
   const [adminNote, setAdminNote]           = useState("");
   const [savedNote, setSavedNote]           = useState("");
+  const [apiKeyVisible, setApiKeyVisible]   = useState(false);
+  const [apiKeyCopied, setApiKeyCopied]     = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -261,6 +264,38 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             </div>
+            {client.apiKey && (
+              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">API Key</h2>
+                    <p className="text-[11px] text-white/30 mt-0.5">Client uses this to connect their app to SAGAH</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setApiKeyVisible((v) => !v)}
+                      className="text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]"
+                    >
+                      {apiKeyVisible ? "Hide" : "Reveal"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(client.apiKey ?? "");
+                        setApiKeyCopied(true);
+                        setTimeout(() => setApiKeyCopied(false), 2000);
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] transition-colors hover:bg-white/[0.08] text-white/40 hover:text-white/70"
+                    >
+                      {apiKeyCopied ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+                <div className="font-mono text-sm px-4 py-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-white/60 tracking-wide break-all">
+                  {apiKeyVisible ? client.apiKey : `sgk_${'•'.repeat(40)}`}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-white">Recent Tickets</h2>

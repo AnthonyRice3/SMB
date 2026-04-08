@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Nav from "../../components/Nav";
+import Image from "next/image";
 import Footer from "../../components/Footer";
 
 /* ─── Mockup: Sign Up ───────────────────────────────────────────────────── */
@@ -10,7 +11,9 @@ function MockupSignup() {
   return (
     <div className="bg-[#0a0a15] rounded-2xl border border-white/[0.07] overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]">
-        <div className="w-3 h-3 rounded bg-[#FF6B61] flex-shrink-0" />
+        <div className="w-3 h-3 rounded flex-shrink-0 overflow-hidden">
+          <Image src="/logo.png" alt="SAGAH" width={12} height={12} className="w-full h-full object-contain" />
+        </div>
         <span className="text-[11px] font-semibold text-white">SAGAH</span>
         <div className="ml-auto flex gap-3">
           {["Features", "About", "Pricing"].map((l) => (

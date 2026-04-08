@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 type Step = "register" | "verify";
 
@@ -88,11 +89,7 @@ export default function SignUpPage() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-7 h-7 rounded-md bg-[#FF6B61] flex items-center justify-center flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1L11 4.5V9L6 11L1 8.5V4L6 1Z" fill="white" />
-            </svg>
-          </div>
+          <Image src="/logo.png" alt="SAGAH" width={28} height={28} className="w-7 h-7 object-contain" />
           <span className="font-bold text-white text-lg tracking-tight">SAGAH</span>
         </Link>
 
