@@ -69,6 +69,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [savedNote, setSavedNote]           = useState("");
   const [apiKeyVisible, setApiKeyVisible]   = useState(false);
   const [apiKeyCopied, setApiKeyCopied]     = useState(false);
+  const [generatingKey, setGeneratingKey]   = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -95,6 +96,17 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     return () => window.removeEventListener(TICKET_EVENT, loadTickets);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, client]);
+
+  async function generateApiKey() {
+    setGeneratingKey(true);
+    const res = await fetch(`/api/admin/clients/${id}/generate-key`, { method: "POST" });
+    const data = await res.json();
+    if (data.apiKey) {
+      setClient((prev) => prev ? { ...prev, apiKey: data.apiKey } : prev);
+      setApiKeyVisible(true);
+    }
+    setGeneratingKey(false);
+  }
 
   async function saveChanges() {
     setSaving(true);
@@ -264,7 +276,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             </div>
-            {client.apiKey && (
+            {client.apiKey ? (
               <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -288,11 +300,33 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                     >
                       {apiKeyCopied ? "✓ Copied" : "Copy"}
                     </button>
+                    <button
+                      onClick={() => window.confirm("Regenerate API key? The old key will stop working immediately.") && generateApiKey()}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] transition-colors hover:bg-white/[0.08] text-white/40 hover:text-white/70"
+                    >
+                      Rotate
+                    </button>
                   </div>
                 </div>
                 <div className="font-mono text-sm px-4 py-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-white/60 tracking-wide break-all">
                   {apiKeyVisible ? client.apiKey : `sgk_${'•'.repeat(40)}`}
                 </div>
+              </div>
+            ) : (
+              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">API Key</h2>
+                  <p className="text-[11px] text-white/30 mt-0.5">No API key yet — generate one to enable app integration</p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={generateApiKey}
+                  disabled={generatingKey}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#FF6B61] hover:bg-[#ff5244] text-white transition-colors disabled:opacity-50"
+                >
+                  {generatingKey ? "Generating…" : "Generate API key"}
+                </motion.button>
               </div>
             )}
 

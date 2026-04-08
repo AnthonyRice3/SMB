@@ -28,6 +28,7 @@ import type {
   ClientDoc,
   InquiryDoc,
   TicketDoc,
+  AppExpenseDoc,
 } from "@/lib/db/schema";
 import type { Collection } from "mongodb";
 
@@ -37,7 +38,8 @@ export type ClientCollectionType =
   | "app_users"
   | "app_events"
   | "app_bookings"
-  | "app_revenue";
+  | "app_revenue"
+  | "app_expenses";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,14 @@ export async function getAppRevenueCollection(
 ): Promise<Collection<AppRevenueDoc>> {
   return (await db()).collection<AppRevenueDoc>(
     collectionName(clientId, "app_revenue")
+  );
+}
+
+export async function getAppExpensesCollection(
+  clientId: string
+): Promise<Collection<AppExpenseDoc>> {
+  return (await db()).collection<AppExpenseDoc>(
+    collectionName(clientId, "app_expenses")
   );
 }
 

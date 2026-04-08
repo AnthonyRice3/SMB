@@ -190,3 +190,37 @@ export interface AppRevenueDoc {
   status: RevenueStatus;
   createdAt: Date;
 }
+
+// ─── Per-client: {clientId}_app_expenses ────────────────────────────────────
+
+export type ExpenseCategory =
+  | "rent"
+  | "utilities"
+  | "software"
+  | "payroll"
+  | "marketing"
+  | "supplies"
+  | "travel"
+  | "food"
+  | "insurance"
+  | "equipment"
+  | "professional_services"
+  | "other";
+
+export type ExpenseRecurrence = "one_time" | "weekly" | "monthly" | "annual";
+
+export interface AppExpenseDoc {
+  _id?: ObjectId;
+  /** Amount in dollars (float) */
+  amount: number;
+  category: ExpenseCategory;
+  description: string;
+  vendor?: string;
+  /** ISO date string YYYY-MM-DD */
+  date: string;
+  recurrence: ExpenseRecurrence;
+  taxDeductible: boolean;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

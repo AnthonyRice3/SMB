@@ -65,6 +65,16 @@ const navItems = [
     ),
   },
   {
+    href: "/dashboard/expenses",
+    label: "Expenses",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+        <path d="M12 6v2m0 8v2m-4-6h2a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h2m1 0v-2m0 10v2" />
+      </svg>
+    ),
+  },
+  {
     href: "/dashboard/settings",
     label: "Settings",
     icon: (
