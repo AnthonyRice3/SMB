@@ -18,7 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiKey } from "@/lib/v1-auth";
-import { stripe, platformFee } from "@/lib/stripe";
+import { stripe, platformFee, PlanTier } from "@/lib/stripe";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const fee = platformFee(amount);
+    const fee = platformFee(amount, (client.plan as PlanTier) ?? "Free");
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: String(currency),

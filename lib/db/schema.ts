@@ -34,7 +34,7 @@ export interface ClientDoc {
   clientId: string;
   name: string;
   email: string;
-  plan: "Free" | "Starter" | "Pro" | "Enterprise";
+  plan: "Free" | "Starter" | "Growth" | "Pro" | "Enterprise";
   status: "active" | "trial" | "inactive" | "suspended";
   /** Index (0-5) into PIPELINE_STAGES array */
   pipelineStage: number;

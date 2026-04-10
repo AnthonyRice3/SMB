@@ -2,7 +2,8 @@
  * POST /api/stripe/checkout
  *
  * Creates a PaymentIntent for a one-time charge processed through a client's
- * Express connected account. SAGAH automatically collects a 10% platform fee.
+ * Express connected account. SAGAH collects a platform fee based on the
+ * client's plan: Free 15% | Starter 10% | Growth 5% | Pro 0%.
  *
  * Body:
  *   clientId  — SAGAH client whose Express account will receive the payment
@@ -14,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, platformFee } from "@/lib/stripe";
+import { stripe, platformFee, PlanTier } from "@/lib/stripe";
 import { getClientsCollection } from "@/lib/db/client-db";
 
 export async function POST(req: NextRequest) {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const fee = platformFee(amount); // 10%
+    const fee = platformFee(amount, (client.plan as PlanTier) ?? "Free");
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,

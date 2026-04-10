@@ -8,7 +8,9 @@
  *   payment_intent.succeeded    — writes revenue record to {clientId}_app_revenue
  *   payment_intent.payment_failed
  *   account.updated             — marks stripeOnboardingComplete when charges_enabled
- *   customer.subscription.deleted — clears stripeSubscriptionId on cancellation
+ *   customer.subscription.created  — sets client.plan when platform subscription activates
+ *   customer.subscription.updated  — syncs client.plan on upgrades/downgrades
+ *   customer.subscription.deleted — resets client.plan to Free on cancellation
  *
  * ─── Stripe setup required ────────────────────────────────────────────────
  *  Stripe Dashboard → Developers → Webhooks → Add endpoint
@@ -17,6 +19,8 @@
  *    payment_intent.succeeded
  *    payment_intent.payment_failed
  *    account.updated
+ *    customer.subscription.created
+ *    customer.subscription.updated
  *    customer.subscription.deleted
  * ──────────────────────────────────────────────────────────────────────────
  */
@@ -24,6 +28,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import type { PlanTier } from "@/lib/stripe";
 import { getClientsCollection, getAppRevenueCollection } from "@/lib/db/client-db";
 
 export async function POST(req: NextRequest) {
@@ -97,17 +102,53 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // ── Seat subscription cancelled ──────────────────────────────────────
-      case "customer.subscription.deleted": {
+      // ── Platform plan subscription activated / upgraded / downgraded ─────────────────
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
-        const clientId = sub.metadata?.sagah_client_id;
-        if (!clientId) break;
+        const clerkUserId = sub.metadata?.sagah_clerk_user_id;
+        const sagahPlan = sub.metadata?.sagah_plan;
+
+        if (!clerkUserId || !sagahPlan) break;
+        if (sub.status !== "active" && sub.status !== "trialing") break;
+
+        const PLAN_NAME_MAP: Record<string, PlanTier> = {
+          starter: "Starter",
+          growth: "Growth",
+          pro: "Pro",
+        };
+        const plan = PLAN_NAME_MAP[sagahPlan];
+        if (!plan) break;
 
         const clients = await getClientsCollection();
         await clients.updateOne(
-          { clientId },
-          { $set: { stripeSubscriptionId: undefined, updatedAt: new Date() } }
+          { clerkUserId },
+          { $set: { plan, stripeSubscriptionId: sub.id, updatedAt: new Date() } }
         );
+        break;
+      }
+
+      // ── Platform plan subscription cancelled ─────────────────────────────────
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const clerkUserId = sub.metadata?.sagah_clerk_user_id;
+        const clientId = sub.metadata?.sagah_client_id;
+
+        const clients = await getClientsCollection();
+
+        if (clerkUserId) {
+          // Platform plan cancelled — downgrade to Free
+          await clients.updateOne(
+            { clerkUserId },
+            { $set: { plan: "Free" as PlanTier, stripeSubscriptionId: undefined, updatedAt: new Date() } }
+          );
+        } else if (clientId) {
+          // Legacy seat subscription cancelled
+          await clients.updateOne(
+            { clientId },
+            { $set: { stripeSubscriptionId: undefined, updatedAt: new Date() } }
+          );
+        }
         break;
       }
 

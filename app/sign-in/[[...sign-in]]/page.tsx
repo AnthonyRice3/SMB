@@ -41,9 +41,21 @@ export default function SignInPage() {
     if (signIn.status === "complete") {
       await finalize();
     } else if (signIn.status === "needs_client_trust") {
-      // Client Trust: Clerk sends a code to the email to verify the device
-      await signIn.mfa.sendEmailCode();
-      setStep("verify");
+      // New device: Clerk sends a verification code to the email
+      try {
+        await signIn.mfa.sendEmailCode();
+        setStep("verify");
+      } catch (sendErr) {
+        setError(getErrorMsg(sendErr));
+      }
+    } else if (signIn.status === "needs_second_factor") {
+      // User has MFA enabled — send email code as second factor
+      try {
+        await signIn.mfa.sendEmailCode();
+        setStep("verify");
+      } catch (sendErr) {
+        setError(getErrorMsg(sendErr));
+      }
     }
   };
 
@@ -60,8 +72,17 @@ export default function SignInPage() {
 
   const finalize = async () => {
     await signIn!.finalize({
-      navigate: ({ decorateUrl }) => {
-        window.location.href = decorateUrl(`${window.location.origin}/dashboard`);
+      navigate: ({ session, decorateUrl }) => {
+        // Handle any pending session tasks (e.g., MFA setup)
+        if (session?.currentTask) return;
+        // Use a relative path so Clerk can properly append the __clerk_db_jwt
+        // token needed to establish trust on new devices
+        const url = decorateUrl("/dashboard");
+        if (url.startsWith("http")) {
+          window.location.href = url;
+        } else {
+          window.location.href = url;
+        }
       },
     });
   };
@@ -172,7 +193,11 @@ export default function SignInPage() {
                 </form>
 
                 <div className="flex items-center justify-center gap-4 mt-5">
-                  <button type="button" onClick={() => signIn?.mfa.sendEmailCode()} className="text-sm text-white/30 hover:text-white/60 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => signIn?.mfa.sendEmailCode().catch((e) => setError(getErrorMsg(e)))}
+                    className="text-sm text-white/30 hover:text-white/60 transition-colors"
+                  >
                     Resend code
                   </button>
                   <span className="text-white/15">·</span>

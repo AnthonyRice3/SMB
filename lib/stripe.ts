@@ -5,9 +5,13 @@
  *
  * Fee model
  * ─────────
- *  Transaction fee : 10% application_fee_amount on every PaymentIntent processed
- *                    through a client's connected Express account.
- *                    Stripe takes ~2-3%, SAGAH retains ~7-8%.
+ *  Transaction fee : applied as application_fee_amount on every PaymentIntent
+ *                    processed through a client's Connect Express account.
+ *                    Rate depends on the client's SAGAH platform plan:
+ *                      Free       — 15%
+ *                      Starter    — 10%
+ *                      Growth     —  5%  (payment processing only)
+ *                      Pro        —  0%
  *
  *  Seat subscription: $25 / month when a client's end-user count exceeds 25.
  *                    Charged directly to the client (not through Connect).
@@ -28,8 +32,17 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 // ─── Fee constants ───────────────────────────────────────────────────────────
 
-/** 10% platform fee on Connect payments */
-export const PLATFORM_FEE_PERCENT = 0.10;
+/** SAGAH platform plan tiers */
+export type PlanTier = "Free" | "Starter" | "Growth" | "Pro" | "Enterprise";
+
+/** Platform fee rates per plan (applied as Stripe application_fee_amount) */
+export const PLAN_FEE_RATES: Record<PlanTier, number> = {
+  Free:       0.15, // 15%
+  Starter:    0.10, // 10%
+  Growth:     0.05, //  5% — payment processing only
+  Pro:        0.00, //  0%
+  Enterprise: 0.00, //  0%
+};
 
 /** Free tier seat limit — clients pay $25/mo once they exceed this */
 export const FREE_SEAT_LIMIT = 25;
@@ -41,10 +54,12 @@ export const SEAT_SUBSCRIPTION_PRICE_CENTS = 2500;
 
 /**
  * Returns the application_fee_amount (in cents) for a given payment amount.
- * Always rounds up to the nearest cent.
+ * Uses the client's plan to determine the fee rate.
+ * Defaults to Free (15%) when plan is unknown.
  */
-export function platformFee(amountCents: number): number {
-  return Math.round(amountCents * PLATFORM_FEE_PERCENT);
+export function platformFee(amountCents: number, plan: PlanTier = "Free"): number {
+  const rate = PLAN_FEE_RATES[plan] ?? PLAN_FEE_RATES.Free;
+  return Math.round(amountCents * rate);
 }
 
 /**
