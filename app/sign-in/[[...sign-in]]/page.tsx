@@ -14,14 +14,18 @@ const slide = {
   exit:    { opacity: 0, x: -16 },
 };
 
+// Tracks which code-verification path we're on so the right Clerk method is used
+type VerifyMode = "emailCode" | "mfa";
+
 export default function SignInPage() {
   const { signIn, fetchStatus } = useSignIn();
 
-  const [step, setStep]         = useState<Step>("credentials");
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode]         = useState("");
-  const [error, setError]       = useState("");
+  const [step, setStep]             = useState<Step>("credentials");
+  const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [code, setCode]             = useState("");
+  const [error, setError]           = useState("");
 
   const loading = fetchStatus === "fetching";
 
@@ -41,21 +45,19 @@ export default function SignInPage() {
     if (signIn.status === "complete") {
       await finalize();
     } else if (signIn.status === "needs_client_trust") {
-      // New device: Clerk sends a verification code to the email
-      try {
-        await signIn.mfa.sendEmailCode();
-        setStep("verify");
-      } catch (sendErr) {
-        setError(getErrorMsg(sendErr));
-      }
+      // New device / new browser: use the first-factor email code path (NOT mfa)
+      // to establish device trust. mfa.sendEmailCode() is for second-factor only
+      // and will fail on accounts without MFA enabled.
+      const { error: sendErr } = await signIn.emailCode.sendCode();
+      if (sendErr) { setError(getErrorMsg(sendErr)); return; }
+      setVerifyMode("emailCode");
+      setStep("verify");
     } else if (signIn.status === "needs_second_factor") {
       // User has MFA enabled — send email code as second factor
-      try {
-        await signIn.mfa.sendEmailCode();
-        setStep("verify");
-      } catch (sendErr) {
-        setError(getErrorMsg(sendErr));
-      }
+      const { error: sendErr } = await signIn.mfa.sendEmailCode();
+      if (sendErr) { setError(getErrorMsg(sendErr)); return; }
+      setVerifyMode("mfa");
+      setStep("verify");
     }
   };
 
@@ -64,27 +66,34 @@ export default function SignInPage() {
     if (!signIn) return;
     setError("");
 
-    const { error: err } = await signIn.mfa.verifyEmailCode({ code });
+    // Use whichever path initiated the code send
+    const { error: err } = verifyMode === "mfa"
+      ? await signIn.mfa.verifyEmailCode({ code })
+      : await signIn.emailCode.verifyCode({ code });
+
     if (err) { setError(getErrorMsg(err)); return; }
 
     if (signIn.status === "complete") await finalize();
   };
 
+  const handleResend = async () => {
+    if (!signIn) return;
+    setError("");
+    const { error: err } = verifyMode === "mfa"
+      ? await signIn.mfa.sendEmailCode()
+      : await signIn.emailCode.sendCode();
+    if (err) setError(getErrorMsg(err));
+  };
+
   const finalize = async () => {
-    await signIn!.finalize({
-      navigate: ({ session, decorateUrl }) => {
-        // Handle any pending session tasks (e.g., MFA setup)
-        if (session?.currentTask) return;
-        // Use a relative path so Clerk can properly append the __clerk_db_jwt
-        // token needed to establish trust on new devices
-        const url = decorateUrl("/dashboard");
-        if (url.startsWith("http")) {
-          window.location.href = url;
-        } else {
-          window.location.href = url;
-        }
+    const { error: err } = await signIn!.finalize({
+      navigate: ({ decorateUrl }) => {
+        // decorateUrl appends __clerk_db_jwt so the new device/browser
+        // can pick up the session token without relying on cookie sharing
+        window.location.href = decorateUrl("/dashboard");
       },
     });
+    if (err) setError(getErrorMsg(err));
   };
 
   const handleGoogle = async () => {
@@ -92,8 +101,8 @@ export default function SignInPage() {
     setError("");
     const { error: err } = await signIn.sso({
       strategy: "oauth_google",
-      redirectUrl: `${window.location.origin}/sso-callback`,
-      redirectCallbackUrl: `${window.location.origin}/sso-callback`,
+      redirectUrl: "/sso-callback",
+      redirectCallbackUrl: "/dashboard",
     });
     if (err) setError(getErrorMsg(err));
   };
@@ -195,7 +204,7 @@ export default function SignInPage() {
                 <div className="flex items-center justify-center gap-4 mt-5">
                   <button
                     type="button"
-                    onClick={() => signIn?.mfa.sendEmailCode().catch((e) => setError(getErrorMsg(e)))}
+                    onClick={handleResend}
                     className="text-sm text-white/30 hover:text-white/60 transition-colors"
                   >
                     Resend code
