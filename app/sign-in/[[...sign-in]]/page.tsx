@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSignIn } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -14,14 +15,11 @@ const slide = {
   exit:    { opacity: 0, x: -16 },
 };
 
-// Tracks which code-verification path we're on so the right Clerk method is used
-type VerifyMode = "emailCode" | "mfa";
-
 export default function SignInPage() {
   const { signIn, fetchStatus } = useSignIn();
+  const router = useRouter();
 
   const [step, setStep]             = useState<Step>("credentials");
-  const [verifyMode, setVerifyMode] = useState<VerifyMode>("emailCode");
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [code, setCode]             = useState("");
@@ -34,6 +32,21 @@ export default function SignInPage() {
     return e?.longMessage ?? e?.message ?? "Something went wrong. Please try again.";
   };
 
+  const sendMfaEmailCode = async (): Promise<boolean> => {
+    if (!signIn) return false;
+    // Check that email_code is a supported second factor before sending
+    const factor = signIn.supportedSecondFactors?.find(
+      (f) => f.strategy === "email_code"
+    );
+    if (!factor) {
+      setError("Email verification is not configured for this account.");
+      return false;
+    }
+    const { error: err } = await signIn.mfa.sendEmailCode();
+    if (err) { setError(getErrorMsg(err)); return false; }
+    return true;
+  };
+
   const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signIn) return;
@@ -44,20 +57,10 @@ export default function SignInPage() {
 
     if (signIn.status === "complete") {
       await finalize();
-    } else if (signIn.status === "needs_client_trust") {
-      // New device / new browser: use the first-factor email code path (NOT mfa)
-      // to establish device trust. mfa.sendEmailCode() is for second-factor only
-      // and will fail on accounts without MFA enabled.
-      const { error: sendErr } = await signIn.emailCode.sendCode();
-      if (sendErr) { setError(getErrorMsg(sendErr)); return; }
-      setVerifyMode("emailCode");
-      setStep("verify");
-    } else if (signIn.status === "needs_second_factor") {
-      // User has MFA enabled — send email code as second factor
-      const { error: sendErr } = await signIn.mfa.sendEmailCode();
-      if (sendErr) { setError(getErrorMsg(sendErr)); return; }
-      setVerifyMode("mfa");
-      setStep("verify");
+    } else if (signIn.status === "needs_client_trust" || signIn.status === "needs_second_factor") {
+      // Both new-device trust and MFA use signIn.mfa.sendEmailCode() per Clerk docs
+      const sent = await sendMfaEmailCode();
+      if (sent) setStep("verify");
     }
   };
 
@@ -66,31 +69,35 @@ export default function SignInPage() {
     if (!signIn) return;
     setError("");
 
-    // Use whichever path initiated the code send
-    const { error: err } = verifyMode === "mfa"
-      ? await signIn.mfa.verifyEmailCode({ code })
-      : await signIn.emailCode.verifyCode({ code });
-
+    // mfa.verifyEmailCode handles both needs_client_trust and needs_second_factor
+    const { error: err } = await signIn.mfa.verifyEmailCode({ code });
     if (err) { setError(getErrorMsg(err)); return; }
 
     if (signIn.status === "complete") await finalize();
   };
 
   const handleResend = async () => {
-    if (!signIn) return;
     setError("");
-    const { error: err } = verifyMode === "mfa"
-      ? await signIn.mfa.sendEmailCode()
-      : await signIn.emailCode.sendCode();
-    if (err) setError(getErrorMsg(err));
+    await sendMfaEmailCode();
   };
 
   const finalize = async () => {
     const { error: err } = await signIn!.finalize({
-      navigate: ({ decorateUrl }) => {
-        // decorateUrl appends __clerk_db_jwt so the new device/browser
-        // can pick up the session token without relying on cookie sharing
-        window.location.href = decorateUrl("/dashboard");
+      navigate: ({ session, decorateUrl }) => {
+        // If there's a pending session task (e.g. mandatory MFA setup), handle it
+        if (session?.currentTask) {
+          router.push(`/onboarding/${session.currentTask.key}`);
+          return;
+        }
+        // decorateUrl appends __clerk_db_jwt for Safari ITP / cross-device trust
+        // When it returns an http(s) URL, use window.location.href (full reload needed)
+        // When it returns a relative path, use router.push (soft nav, no flicker)
+        const url = decorateUrl("/dashboard");
+        if (url.startsWith("http")) {
+          window.location.href = url;
+        } else {
+          router.push(url);
+        }
       },
     });
     if (err) setError(getErrorMsg(err));
