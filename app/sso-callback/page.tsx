@@ -6,7 +6,7 @@
  * and then redirects the user to redirectUrlComplete ("/dashboard").
  */
 
-import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function SSOCallbackPage() {
   return (
@@ -20,7 +20,7 @@ export default function SSOCallbackPage() {
         </div>
         <div className="w-5 h-5 border-2 border-[#FF6B61]/30 border-t-[#FF6B61] rounded-full animate-spin" />
       </div>
-      <AuthenticateWithRedirectCallback />
+      {redirect("/")}
     </div>
   );
 }

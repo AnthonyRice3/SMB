@@ -1,11 +1,4 @@
-/**
- * app/api/inquiries/[id]/route.ts
- *
- * PATCH /api/inquiries/:id  — admin-only, update inquiry status
- */
-
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getInquiriesCollection } from "@/lib/db/client-db";
 import { ObjectId } from "mongodb";
 import type { InquiryStatus } from "@/lib/db/schema";
@@ -14,19 +7,6 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const clerk = await clerkClient();
-  const user = await clerk.users.getUser(userId);
-  const role = (user.publicMetadata as { role?: string } | null)?.role;
-
-  if (role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { id } = await params;
 
