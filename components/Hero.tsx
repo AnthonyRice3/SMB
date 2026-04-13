@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import AuthModal from './AuthModal';
 
 const fadeUp = (delay = 0) => ({
   hidden: { opacity: 0, y: 24 },
@@ -15,10 +13,8 @@ const bars = [38, 52, 44, 72, 61, 85, 54, 90, 68, 96, 78, 88];
 
 export default function Hero() {
   const { isSignedIn } = useUser();
-  const [modal, setModal] = useState<"sign-in" | "sign-up" | null>(null);
 
   return (
-    <>
     <section className="relative overflow-hidden">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute top-0 inset-x-0 flex justify-center">
@@ -73,14 +69,15 @@ export default function Hero() {
               </motion.div>
             </Link>
           ) : (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setModal("sign-up")}
-              className="bg-[#FF6B61] hover:bg-[#ff5244] text-white py-3 px-7 rounded-full font-semibold text-sm transition-colors cursor-pointer"
-            >
-              Create free account
-            </motion.button>
+            <Link href="/sign-up">
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="bg-[#FF6B61] hover:bg-[#ff5244] text-white py-3 px-7 rounded-full font-semibold text-sm transition-colors inline-block cursor-pointer"
+              >
+                Create free account
+              </motion.div>
+            </Link>
           )}
           <motion.a
             href="/how-it-works"
@@ -148,12 +145,5 @@ export default function Hero() {
         </div>
       </motion.div>
     </section>
-
-    <AnimatePresence>
-      {modal && (
-        <AuthModal initialMode={modal} onClose={() => setModal(null)} />
-      )}
-    </AnimatePresence>
-    </>
   );
 }
