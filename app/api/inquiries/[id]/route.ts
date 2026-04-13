@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getInquiriesCollection } from "@/lib/db/client-db";
 import { ObjectId } from "mongodb";
 import type { InquiryStatus } from "@/lib/db/schema";
+
+async function requireAdmin() {
+  const { userId } = await auth();
+  if (!userId) return false;
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
+  return (user.publicMetadata as { role?: string } | null)?.role === "admin";
+}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
 

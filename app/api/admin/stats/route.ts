@@ -8,9 +8,17 @@
  */
 
 import { NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getClientsCollection, getAppRevenueCollection } from "@/lib/db/client-db";
 
 export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
+  const role = (user.publicMetadata as { role?: string } | null)?.role;
+  if (role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const clientsCol = await getClientsCollection();

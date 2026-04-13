@@ -4,15 +4,24 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { ObjectId } from "mongodb";
 import { randomBytes } from "crypto";
 import { getClientsCollection } from "@/lib/db/client-db";
+
+async function requireAdmin() {
+  const { userId } = await auth();
+  if (!userId) return false;
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
+  return (user.publicMetadata as { role?: string } | null)?.role === "admin";
+}
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
 
   if (!ObjectId.isValid(id)) {

@@ -29,7 +29,6 @@ export default function Nav() {
           <Link href="/" className="hover:text-white transition-colors duration-150">Home</Link>
           <Link href="/#learn" className="hover:text-white transition-colors duration-150">Features</Link>
           <Link href="/how-it-works" className="hover:text-white transition-colors duration-150">How it works</Link>
-          <Link href="/pricing" className="hover:text-white transition-colors duration-150">Pricing</Link>
           <Link href="/about" className="hover:text-white transition-colors duration-150">About</Link>
           <Link href="/contact" className="hover:text-white transition-colors duration-150">Contact</Link>
           {isSignedIn && (

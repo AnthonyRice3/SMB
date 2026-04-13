@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -134,6 +135,7 @@ const PLANS: Plan[] = [
 export default function PricingClient() {
   const [interval, setInterval] = useState<Interval>("month");
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const { isSignedIn } = useUser();
   const router = useRouter();
 
   async function handleCTA(plan: Plan) {
@@ -142,8 +144,10 @@ export default function PricingClient() {
       return;
     }
 
-    // Auth not configured — redirect to sign-in
-    router.push("/sign-in");
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
 
     setLoading(plan.id);
     try {

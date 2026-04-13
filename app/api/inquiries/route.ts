@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getInquiriesCollection } from "@/lib/db/client-db";
 import type { InquiryDoc } from "@/lib/db/schema";
 
@@ -53,8 +54,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  try {
+  const clerk = await clerkClient();
+  const user = await clerk.users.getUser(userId);
+  const role = (user.publicMetadata as { role?: string } | null)?.role;
+  if (role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const col = await getInquiriesCollection();
     const list = await col
       .find({})
