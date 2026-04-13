@@ -61,6 +61,8 @@ export async function GET() {
   const user = await clerk.users.getUser(userId);
   const role = (user.publicMetadata as { role?: string } | null)?.role;
   if (role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
     const col = await getInquiriesCollection();
     const list = await col
       .find({})
