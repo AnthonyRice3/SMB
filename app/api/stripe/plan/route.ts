@@ -32,16 +32,16 @@ type Interval = "month" | "year";
 
 const PRICE_ID_MAP: Record<Plan, Record<Interval, string>> = {
   starter: {
-    month: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID ?? "",
-    year: process.env.STRIPE_STARTER_ANNUAL_PRICE_ID ?? "",
+    month: process.env.STRIPE_PRICE_STARTER_MONTHLY ?? "",
+    year: process.env.STRIPE_PRICE_STARTER_ANNUAL ?? "",
   },
   growth: {
-    month: process.env.STRIPE_GROWTH_MONTHLY_PRICE_ID ?? "",
-    year: process.env.STRIPE_GROWTH_ANNUAL_PRICE_ID ?? "",
+    month: process.env.STRIPE_PRICE_GROWTH_MONTHLY ?? "",
+    year: process.env.STRIPE_PRICE_GROWTH_ANNUAL ?? "",
   },
   pro: {
-    month: process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? "",
-    year: process.env.STRIPE_PRO_ANNUAL_PRICE_ID ?? "",
+    month: process.env.STRIPE_PRICE_PRO_MONTHLY ?? "",
+    year: process.env.STRIPE_PRICE_PRO_ANNUAL ?? "",
   },
 };
 
