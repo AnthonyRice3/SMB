@@ -47,6 +47,12 @@ interface ClientData {
   createdAt: string;
   stripeOnboardingComplete?: boolean;
   apiKey?: string;
+  domains?: Array<{
+    domain: string;
+    status: "pending" | "approved" | "declined" | "active";
+    requestedAt: string;
+    resolvedAt?: string;
+  }>;
 }
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +68,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [pipelineStage, setPipelineStage]   = useState(0);
   const [plan, setPlan]                     = useState("Free");
   const [accountStatus, setAccountStatus]   = useState("active");
-  const [activeTab, setActiveTab]           = useState<"overview" | "tickets" | "pipeline" | "notes">("overview");
+  const [activeTab, setActiveTab]           = useState<"overview" | "tickets" | "pipeline" | "notes" | "domains">("overview");
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [replyText, setReplyText]           = useState<Record<string, string>>({});
   const [adminNote, setAdminNote]           = useState("");
@@ -70,6 +76,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [apiKeyVisible, setApiKeyVisible]   = useState(false);
   const [apiKeyCopied, setApiKeyCopied]     = useState(false);
   const [generatingKey, setGeneratingKey]   = useState(false);
+  const [domainAction, setDomainAction]     = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setLoading(true);
@@ -119,6 +126,29 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     setSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
+  }
+
+  async function handleDomainAction(domain: string, action: "approve" | "decline" | "active") {
+    setDomainAction((prev) => ({ ...prev, [domain]: true }));
+    try {
+      const res = await fetch(`/api/admin/domains/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, action }),
+      });
+      if (res.ok) {
+        const { domain: updated } = await res.json();
+        setClient((prev) => {
+          if (!prev) return prev;
+          const domains = (prev.domains ?? []).map((d) =>
+            d.domain === domain ? { ...d, ...updated } : d
+          );
+          return { ...prev, domains };
+        });
+      }
+    } finally {
+      setDomainAction((prev) => ({ ...prev, [domain]: false }));
+    }
   }
 
   function sendReply(ticketId: string) {
@@ -237,16 +267,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       </motion.div>
 
       <motion.div variants={fade(0.08)} initial="hidden" animate="visible" className="flex gap-1 mb-6">
-        {(["overview", "tickets", "pipeline", "notes"] as const).map((t) => (
-          <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-xl text-xs font-medium capitalize transition-colors relative ${activeTab === t ? "text-white" : "text-white/35 hover:text-white/60"}`}>
-            {activeTab === t && <motion.div layoutId="admin-user-tab" className="absolute inset-0 bg-white/[0.08] rounded-xl" />}
-            <span className="relative">
-              {t === "tickets" && unresolvedCount > 0 ? (
-                <span className="flex items-center gap-1.5">Tickets<span className="w-4 h-4 rounded-full bg-[#FF6B61] text-white text-[9px] font-bold flex items-center justify-center">{unresolvedCount}</span></span>
-              ) : t.charAt(0).toUpperCase() + t.slice(1)}
-            </span>
-          </button>
-        ))}
+        {(["overview", "tickets", "pipeline", "domains", "notes"] as const).map((t) => {
+          const pendingDomains = t === "domains" ? (client.domains ?? []).filter((d) => d.status === "pending").length : 0;
+          return (
+            <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-xl text-xs font-medium capitalize transition-colors relative ${activeTab === t ? "text-white" : "text-white/35 hover:text-white/60"}`}>
+              {activeTab === t && <motion.div layoutId="admin-user-tab" className="absolute inset-0 bg-white/[0.08] rounded-xl" />}
+              <span className="relative">
+                {t === "tickets" && unresolvedCount > 0 ? (
+                  <span className="flex items-center gap-1.5">Tickets<span className="w-4 h-4 rounded-full bg-[#FF6B61] text-white text-[9px] font-bold flex items-center justify-center">{unresolvedCount}</span></span>
+                ) : t === "domains" && pendingDomains > 0 ? (
+                  <span className="flex items-center gap-1.5">Domains<span className="w-4 h-4 rounded-full bg-amber-400 text-white text-[9px] font-bold flex items-center justify-center">{pendingDomains}</span></span>
+                ) : t.charAt(0).toUpperCase() + t.slice(1)}
+              </span>
+            </button>
+          );
+        })}
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -444,6 +479,74 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                   </button>
                 ))}
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === "domains" && (
+          <motion.div key="domains" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
+              {(!client.domains || client.domains.length === 0) ? (
+                <div className="p-10 text-center">
+                  <p className="text-sm text-white/30">No domain requests from this client yet.</p>
+                </div>
+              ) : client.domains.map((d, i) => {
+                const isPending  = d.status === "pending";
+                const isActive   = d.status === "active";
+                const isActing   = domainAction[d.domain];
+                const statusCls: Record<string, string> = {
+                  pending:  "text-amber-400 bg-amber-400/10 border-amber-400/20",
+                  approved: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+                  declined: "text-[#FF6B61] bg-[#FF6B61]/10 border-[#FF6B61]/20",
+                  active:   "text-blue-400 bg-blue-400/10 border-blue-400/20",
+                };
+                const statusLabel: Record<string, string> = {
+                  pending: "Pending", approved: "Approved", declined: "Declined", active: "In use",
+                };
+                return (
+                  <div key={d.domain} className={`flex items-center justify-between px-5 py-4 ${i < (client.domains?.length ?? 0) - 1 ? "border-b border-white/[0.05]" : ""}`}>
+                    <div>
+                      <p className="text-sm font-medium text-white font-mono">{d.domain}</p>
+                      <p className="text-[11px] text-white/30 mt-0.5">
+                        Requested {new Date(d.requestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        {d.resolvedAt && <> · Reviewed {new Date(d.resolvedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${statusCls[d.status]}`}>
+                        {statusLabel[d.status]}
+                      </span>
+                      {isPending && (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleDomainAction(d.domain, "approve")}
+                            disabled={isActing}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-400 border border-emerald-400/20 transition-colors disabled:opacity-40"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleDomainAction(d.domain, "decline")}
+                            disabled={isActing}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#FF6B61]/10 hover:bg-[#FF6B61]/20 text-[#FF6B61] border border-[#FF6B61]/20 transition-colors disabled:opacity-40"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {d.status === "approved" && !isActive && (
+                        <button
+                          onClick={() => handleDomainAction(d.domain, "active")}
+                          disabled={isActing}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-400/10 hover:bg-blue-400/20 text-blue-400 border border-blue-400/20 transition-colors disabled:opacity-40"
+                        >
+                          Mark connected
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}

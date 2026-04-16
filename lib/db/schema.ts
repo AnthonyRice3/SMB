@@ -51,6 +51,13 @@ export interface ClientDoc {
   clerkUserId?: string;
   /** Secret API key used by the client's app to call SAGAH's v1 API */
   apiKey?: string;
+  /** Domain requests submitted by the client */
+  domains?: Array<{
+    domain: string;
+    status: "pending" | "approved" | "declined" | "active";
+    requestedAt: Date;
+    resolvedAt?: Date;
+  }>;
   /** True once the 4 per-client collections have been provisioned */
   collectionsProvisioned: boolean;
   createdAt: Date;
