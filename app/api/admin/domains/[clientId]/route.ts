@@ -57,7 +57,7 @@ export async function PATCH(
   const idx = domains.findIndex((d: { domain: string }) => d.domain === domain);
   if (idx === -1) return NextResponse.json({ error: "Domain not found" }, { status: 404 });
 
-  const statusMap: Record<string, string> = {
+  const statusMap: Record<string, "pending" | "approved" | "declined" | "active"> = {
     approve: "approved",
     decline: "declined",
     active: "active",
