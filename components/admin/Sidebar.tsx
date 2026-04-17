@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getInquiries, INQUIRY_EVENT } from '../../lib/inquiries';
@@ -92,6 +92,7 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [newCount, setNewCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     function refresh() {
@@ -102,16 +103,11 @@ export default function Sidebar() {
     return () => window.removeEventListener(INQUIRY_EVENT, refresh);
   }, []);
 
-  return (
-    <aside className="w-56 shrink-0 border-r border-white/[0.06] bg-[#0a0a14] flex flex-col">
-      <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="SAGAH" width={20} height={20} className="w-5 h-5 object-contain" />
-          <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
-        </Link>
-        <p className="mt-1 text-[11px] text-white/25 pl-7">Admin Panel</p>
-      </div>
+  // Close on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
+  const NavLinks = ({ onClose }: { onClose?: () => void }) => (
+    <>
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon, showBadge }) => {
           const active = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
@@ -119,6 +115,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 active ? 'text-white' : 'text-white/40 hover:text-white/70'
               }`}
@@ -141,12 +138,84 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
       <div className="px-5 py-4 border-t border-white/[0.06]">
-        <Link href="/" className="text-xs text-white/25 hover:text-white/50 transition-colors">
+        <Link href="/" onClick={onClose} className="text-xs text-white/25 hover:text-white/50 transition-colors">
           ← Back to site
         </Link>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* ── Desktop sidebar ─────────────────────────── */}
+      <aside className="hidden md:flex w-56 shrink-0 border-r border-white/[0.06] bg-[#0a0a14] flex-col">
+        <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="SAGAH" width={20} height={20} className="w-5 h-5 object-contain" />
+            <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
+          </Link>
+          <p className="mt-1 text-[11px] text-white/25 pl-7">Admin Panel</p>
+        </div>
+        <NavLinks />
+      </aside>
+
+      {/* ── Mobile top bar ──────────────────────────── */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between px-4 h-14 bg-[#0a0a14] border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="SAGAH" width={20} height={20} className="w-5 h-5 object-contain" />
+            <span className="font-semibold text-white text-sm tracking-tight">SAGAH</span>
+          </Link>
+          <span className="text-[10px] text-white/25 ml-1">Admin</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {newCount > 0 && (
+            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold bg-[#FF6B61] text-white rounded-full">
+              {newCount}
+            </span>
+          )}
+          <button
+            onClick={() => setMobileOpen((v) => !v)}
+            className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors"
+            aria-label="Toggle menu"
+          >
+            <motion.span animate={mobileOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }} transition={{ duration: 0.2 }} className="block w-4 h-px bg-white/70 rounded-full origin-center" />
+            <motion.span animate={mobileOpen ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }} transition={{ duration: 0.15 }} className="block w-4 h-px bg-white/70 rounded-full" />
+            <motion.span animate={mobileOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }} transition={{ duration: 0.2 }} className="block w-4 h-px bg-white/70 rounded-full origin-center" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mobile spacer ───────────────────────────── */}
+      <div className="md:hidden h-14 shrink-0" />
+
+      {/* ── Mobile drawer overlay ───────────────────── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              key="admin-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              key="admin-drawer"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              className="md:hidden fixed top-14 left-0 bottom-0 z-50 w-72 bg-[#0a0a14] border-r border-white/[0.06] flex flex-col"
+            >
+              <NavLinks onClose={() => setMobileOpen(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
