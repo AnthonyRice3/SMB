@@ -111,7 +111,7 @@ export default function DomainsPage() {
       <motion.div variants={fade(0.08)} initial="hidden" animate="visible" className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-white mb-1">Request a domain</h2>
         <p className="text-xs text-white/35 mb-4">Enter the domain you'd like to use, e.g. <span className="text-white/50 font-mono">app.yourcompany.com</span></p>
-        <form onSubmit={submit} className="flex gap-3">
+        <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -124,7 +124,7 @@ export default function DomainsPage() {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={submitting || !input.trim()}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#FF6B61] hover:bg-[#ff5244] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#FF6B61] hover:bg-[#ff5244] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {submitting ? "Submitting…" : "Submit request"}
           </motion.button>

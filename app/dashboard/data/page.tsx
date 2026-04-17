@@ -144,7 +144,8 @@ export default function DataPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+          <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden min-w-[540px]">
             <div className="grid grid-cols-[1fr_1.5fr_80px_80px_100px] gap-4 px-5 py-3 border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-widest text-white/25">
               <span>Name</span>
               <span>Email</span>
@@ -186,11 +187,13 @@ export default function DataPage() {
               ))
             )}
           </div>
+          </div>
         </motion.div>
       ) : (
         /* Schema view */
         <motion.div variants={fade(0.1)} initial="hidden" animate="visible">
-          <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+          <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden min-w-[480px]">
             <div className="grid grid-cols-[140px_100px_1fr] gap-4 px-5 py-3 border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-widest text-white/25">
               <span>Field</span>
               <span>Type</span>
@@ -210,6 +213,7 @@ export default function DataPage() {
                 <p className="text-sm text-white/45">{field.note}</p>
               </div>
             ))}
+          </div>
           </div>
           <p className="text-xs text-white/20 mt-3 text-center">
             Schema is customizable — fields can be added or modified to fit your business model.

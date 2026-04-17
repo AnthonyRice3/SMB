@@ -111,6 +111,22 @@ export interface InquiryDoc {
   createdAt: Date;
 }
 
+// ─── Platform: consultations ────────────────────────────────────────────────
+
+export interface ConsultationDoc {
+  _id?: ObjectId;
+  name: string;
+  email: string;
+  company?: string;
+  date: string;   // human-readable, e.g. "Apr 7, 2026"
+  time: string;   // e.g. "10:00 AM"
+  topic: string;
+  notes?: string;
+  duration: number; // minutes
+  status: "scheduled" | "completed" | "cancelled";
+  createdAt: Date;
+}
+
 // ─── Per-client: {clientId}_app_users ───────────────────────────────────────
 
 export interface AppUserDoc {

@@ -29,6 +29,7 @@ import type {
   InquiryDoc,
   TicketDoc,
   AppExpenseDoc,
+  ConsultationDoc,
 } from "@/lib/db/schema";
 import type { Collection } from "mongodb";
 
@@ -71,6 +72,10 @@ async function db() {
 
 export async function getClientsCollection(): Promise<Collection<ClientDoc>> {
   return (await db()).collection<ClientDoc>("clients");
+}
+
+export async function getConsultationsCollection(): Promise<Collection<ConsultationDoc>> {
+  return (await db()).collection<ConsultationDoc>("consultations");
 }
 
 export async function getAppUsersCollection(

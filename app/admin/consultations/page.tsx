@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MONTHS = [
@@ -16,12 +16,7 @@ const TIME_SLOTS = [
 ];
 
 // Mock already-booked slots keyed by "YYYY-MM-DD"
-const BOOKED_SLOTS: Record<string, string[]> = {
-  '2026-04-07': ['10:00 AM', '2:30 PM'],
-  '2026-04-08': ['9:00 AM',  '11:00 AM'],
-  '2026-04-10': ['1:30 PM',  '3:00 PM'],
-  '2026-04-14': ['10:30 AM', '2:00 PM', '4:00 PM'],
-};
+// Removed — booked slots are now derived from live consultation data
 
 const TOPICS = [
   'Stripe Connect Setup',
@@ -33,7 +28,7 @@ const TOPICS = [
 ];
 
 interface Consultation {
-  id: number;
+  id: string;
   name: string;
   company: string;
   date: string;
@@ -42,28 +37,42 @@ interface Consultation {
   duration: number;
 }
 
-const INITIAL: Consultation[] = [
-  { id: 1, name: 'Marcus Webb',  company: 'Acme Corp',     date: 'Apr 7, 2026',  time: '10:00 AM', topic: 'Stripe Connect Setup',      duration: 30 },
-  { id: 2, name: 'Sarah Chen',   company: 'BuildFast Inc', date: 'Apr 8, 2026',  time: '2:30 PM',  topic: 'Clerk Auth Configuration',   duration: 60 },
-  { id: 3, name: 'Jordan Lee',   company: 'NexaScale',     date: 'Apr 10, 2026', time: '1:30 PM',  topic: 'MongoDB Schema Design',       duration: 30 },
-  { id: 4, name: 'Priya Nair',   company: 'DataForge',     date: 'Apr 14, 2026', time: '10:30 AM', topic: 'Custom Integration',          duration: 60 },
-];
+const TODAY = new Date();
 
 function toKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const TODAY = new Date(2026, 3, 2); // April 2 2026
-
 export default function ConsultationsPage() {
-  const [viewMonth, setViewMonth]   = useState(new Date(2026, 3, 1));
+  const [viewMonth, setViewMonth]   = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selected, setSelected]     = useState<Date | null>(null);
   const [slot, setSlot]             = useState<string | null>(null);
-  const [upcoming, setUpcoming]     = useState<Consultation[]>(INITIAL);
+  const [upcoming, setUpcoming]     = useState<Consultation[]>([]);
   const [submitted, setSubmitted]   = useState(false);
   const [form, setForm]             = useState({
     name: '', email: '', company: '', topic: '', notes: '', duration: '30',
   });
+
+  useEffect(() => {
+    fetch('/api/admin/consultations')
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setUpcoming(data); })
+      .catch(() => null);
+  }, []);
+
+  // Derive booked slots from live consultation data
+  const BOOKED_SLOTS = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    upcoming.forEach((c) => {
+      const parsed = new Date(c.date);
+      if (!isNaN(parsed.getTime())) {
+        const key = toKey(parsed);
+        if (!map[key]) map[key] = [];
+        map[key].push(c.time);
+      }
+    });
+    return map;
+  }, [upcoming]);
 
   const year      = viewMonth.getFullYear();
   const month     = viewMonth.getMonth();
@@ -87,17 +96,28 @@ export default function ConsultationsPage() {
     e.preventDefault();
     if (!selected || !slot || !form.name || !form.email || !form.topic) return;
     const dateStr = selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    setUpcoming((prev) => [
-      ...prev,
-      { id: Date.now(), name: form.name, company: form.company, date: dateStr, time: slot, topic: form.topic, duration: Number(form.duration) },
-    ]);
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setSelected(null);
-      setSlot(null);
-      setForm({ name: '', email: '', company: '', topic: '', notes: '', duration: '30' });
-    }, 3000);
+
+    fetch('/api/admin/consultations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name, email: form.email, company: form.company,
+        date: dateStr, time: slot, topic: form.topic,
+        notes: form.notes, duration: Number(form.duration),
+      }),
+    })
+      .then((r) => r.json())
+      .then((saved) => {
+        setUpcoming((prev) => [saved, ...prev]);
+        setSubmitted(true);
+        setTimeout(() => {
+          setSubmitted(false);
+          setSelected(null);
+          setSlot(null);
+          setForm({ name: '', email: '', company: '', topic: '', notes: '', duration: '30' });
+        }, 3000);
+      })
+      .catch(() => null);
   }
 
   return (

@@ -81,7 +81,8 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
+      <div className="overflow-x-auto">
+      <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden min-w-[480px]">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06]">
@@ -127,6 +128,7 @@ export default function UsersPage() {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
