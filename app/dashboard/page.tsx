@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -87,6 +87,14 @@ interface StatsData {
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
   const [msgOpen, setMsgOpen] = useState(false);
   const [client, setClient] = useState<ClientData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
