@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import MessageModal from "@/components/dashboard/MessageModal";
 
@@ -89,6 +90,10 @@ export default function DashboardPage() {
   const [msgOpen, setMsgOpen] = useState(false);
   const [client, setClient] = useState<ClientData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [subscriptionBanner, setSubscriptionBanner] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -98,8 +103,35 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    fetch("/api/clients/me").then((r) => r.json()).then(setClient).catch(() => null);
+    const sessionId = searchParams.get("session_id");
+    const subscribed = searchParams.get("subscribed");
+    const planParam = searchParams.get("plan");
+
+    if (subscribed === "1" && sessionId) {
+      // Verify checkout and update plan immediately (don't wait for webhook)
+      fetch(`/api/stripe/verify-checkout?session_id=${sessionId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.plan) {
+            setSubscriptionBanner(data.plan);
+            // Refetch client so all plan-aware UI reflects the change
+            fetch("/api/clients/me").then((r) => r.json()).then(setClient).catch(() => null);
+          }
+        })
+        .catch(() => null);
+      // Clean up URL without reloading the page
+      router.replace("/dashboard");
+    } else if (subscribed === "1" && planParam) {
+      // Fallback: no session_id but subscribed flag present
+      setSubscriptionBanner(planParam.charAt(0).toUpperCase() + planParam.slice(1));
+      fetch("/api/clients/me").then((r) => r.json()).then(setClient).catch(() => null);
+      router.replace("/dashboard");
+    } else {
+      fetch("/api/clients/me").then((r) => r.json()).then(setClient).catch(() => null);
+    }
+
     fetch("/api/me/stats").then((r) => r.json()).then(setStats).catch(() => null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stageIdx = client?.pipelineStage ?? 2;
@@ -142,6 +174,30 @@ export default function DashboardPage() {
   return (
     <div className="px-8 py-8 max-w-6xl">
       <MessageModal open={msgOpen} onClose={() => setMsgOpen(false)} />
+
+      {/* Subscription success banner */}
+      <AnimatePresence>
+        {subscriptionBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-6 flex items-center gap-3 bg-emerald-400/10 border border-emerald-400/20 rounded-2xl px-5 py-4"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+            <p className="text-sm text-emerald-400 font-medium">
+              You&apos;re now on the <span className="font-semibold">{subscriptionBanner}</span> plan — welcome!
+            </p>
+            <button
+              onClick={() => setSubscriptionBanner(null)}
+              className="ml-auto text-emerald-400/50 hover:text-emerald-400 transition-colors text-xs"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <motion.div variants={fade(0)} initial="hidden" animate="visible" className="mb-8">
         <h1 className="text-xl font-semibold text-white">

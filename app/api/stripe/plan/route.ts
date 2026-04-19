@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       customer: customerId,
       customer_email: customerId ? undefined : email,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${BASE_URL}/dashboard?plan=${planId}&subscribed=1`,
+      success_url: `${BASE_URL}/dashboard?plan=${planId}&subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/pricing?cancelled=1`,
       allow_promotion_codes: true,
       subscription_data: {
