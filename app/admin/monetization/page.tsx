@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const PLAN_PRICE: Record<string, number> = { free: 0, starter: 49, pro: 299, enterprise: 899 };
+const PLAN_PRICE: Record<string, number> = { free: 0, starter: 10, growth: 20, pro: 35, enterprise: 99 };
 const PLAN_COLOR: Record<string, string> = {
   enterprise: 'bg-orange-400',
   pro:        'bg-violet-400',
@@ -57,7 +57,7 @@ export default function MonetizationPage() {
       name: plan.charAt(0).toUpperCase() + plan.slice(1),
       key: plan,
       users: count,
-      revenue: (PLAN_PRICE[plan] ?? 0) * count,
+      revenue: (PLAN_PRICE[plan.toLowerCase()] ?? 0) * count,
     }))
     .sort((a, b) => b.revenue - a.revenue);
   const maxUsers = Math.max(...planRows.map((p) => p.users), 1);

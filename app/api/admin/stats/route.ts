@@ -41,9 +41,10 @@ export async function GET() {
     // Aggregate MRR across all clients' app_revenue collections
     const PLAN_PRICE: Record<string, number> = {
       Free:       0,
-      Starter:    49,
-      Pro:        299,
-      Enterprise: 899,
+      Starter:    10,
+      Growth:     20,
+      Pro:        35,
+      Enterprise: 99,
     };
     let mrr = 0;
     for (const c of clients) {

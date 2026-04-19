@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -135,14 +135,29 @@ const PLANS: Plan[] = [
 export default function PricingClient() {
   const [interval, setInterval] = useState<Interval>("month");
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const { isSignedIn } = useUser();
   const router = useRouter();
 
+  useEffect(() => {
+    if (isSignedIn) {
+      fetch("/api/clients/me")
+        .then((r) => r.json())
+        .then((d) => { if (d?.plan) setCurrentPlan(d.plan.toLowerCase()); })
+        .catch(() => null);
+    } else {
+      setCurrentPlan(null);
+    }
+  }, [isSignedIn]);
+
   async function handleCTA(plan: Plan) {
     if (plan.id === "free") {
+      if (isSignedIn) return; // already has at least free
       router.push("/sign-up");
       return;
     }
+
+    if (plan.id === currentPlan) return; // already on this plan
 
     if (!isSignedIn) {
       router.push("/sign-in");
@@ -255,6 +270,7 @@ export default function PricingClient() {
               plan={plan}
               interval={interval}
               loading={loading === plan.id}
+              currentPlan={currentPlan}
               onCTA={() => handleCTA(plan)}
               delay={0.2 + i * 0.06}
             />
@@ -343,18 +359,21 @@ function PlanCard({
   plan,
   interval,
   loading,
+  currentPlan,
   onCTA,
   delay,
 }: {
   plan: Plan;
   interval: Interval;
   loading: boolean;
+  currentPlan: string | null;
   onCTA: () => void;
   delay: number;
 }) {
   const price =
     interval === "year" ? plan.annualMonthlyPrice : plan.monthlyPrice;
   const isFree = plan.id === "free";
+  const isCurrent = currentPlan !== null && plan.id === currentPlan;
 
   return (
     <motion.div
@@ -371,6 +390,13 @@ function PlanCard({
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="bg-[#FF6B61] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
             Most popular
+          </span>
+        </div>
+      )}
+      {isCurrent && (
+        <div className="absolute -top-3 right-4">
+          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
+            Current plan
           </span>
         </div>
       )}
@@ -421,14 +447,16 @@ function PlanCard({
       {/* CTA */}
       <button
         onClick={onCTA}
-        disabled={loading}
-        className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 cursor-pointer mb-6 disabled:opacity-60 ${
-          plan.highlight
-            ? "bg-[#FF6B61] hover:bg-[#ff5244] text-white"
+        disabled={loading || isCurrent}
+        className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 mb-6 ${
+          isCurrent
+            ? "bg-white/[0.06] text-white/40 cursor-default border border-white/[0.08]"
+            : plan.highlight
+            ? "bg-[#FF6B61] hover:bg-[#ff5244] text-white cursor-pointer"
             : isFree
-            ? "bg-white text-[#07070e] hover:bg-white/90"
-            : "border border-white/10 text-white bg-white/[0.04] hover:bg-white/[0.08]"
-        }`}
+            ? "bg-white text-[#07070e] hover:bg-white/90 cursor-pointer"
+            : "border border-white/10 text-white bg-white/[0.04] hover:bg-white/[0.08] cursor-pointer"
+        } disabled:opacity-60`}
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -438,6 +466,8 @@ function PlanCard({
             </svg>
             Redirecting…
           </span>
+        ) : isCurrent ? (
+          "Current plan"
         ) : (
           plan.cta
         )}
