@@ -1,19 +1,30 @@
 /**
  * POST /api/v1/payments/checkout
  *
- * Create a Stripe PaymentIntent for the calling client's Express account.
- * SAGAH automatically collects a 10% platform fee.
+ * Creates a payment for the calling client's Stripe Express account.
+ * SAGAH automatically collects a platform fee based on the client's plan.
  *
  * Headers:
  *   Authorization: Bearer sgk_<key>
  *
- * Body:
- *   amount    — required, amount in cents (min 50 = $0.50)
- *   currency  — optional, default "usd"
- *   metadata  — optional, key-value pairs forwarded to Stripe
+ * Body (hosted checkout — recommended, no Stripe.js required on your site):
+ *   hosted      — true
+ *   amount      — required, amount in cents (min 50 = $0.50)
+ *   successUrl  — required, URL to redirect to after payment
+ *   cancelUrl   — required, URL to redirect to if customer cancels
+ *   productName — optional, line item label shown on the Stripe checkout page (default: "Payment")
+ *   currency    — optional, default "usd"
+ *   metadata    — optional, key-value pairs forwarded to Stripe
  *
- * Returns: { clientSecret, paymentIntentId, fee }
- * Use the clientSecret in Stripe.js on the frontend to complete the payment.
+ * Returns (hosted): { url } — redirect the customer to this Stripe-hosted checkout page
+ *
+ * Body (custom UI — requires Stripe.js + Elements on your frontend):
+ *   hosted      — false or omitted
+ *   amount      — required, amount in cents (min 50 = $0.50)
+ *   currency    — optional, default "usd"
+ *   metadata    — optional
+ *
+ * Returns (custom): { clientSecret, paymentIntentId, fee }
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -38,13 +49,24 @@ export async function POST(req: NextRequest) {
 
   if (!client.stripeAccountId || !client.stripeOnboardingComplete) {
     return NextResponse.json(
-      { error: "Stripe account not set up — complete onboarding in your SAGAH dashboard" },
+      {
+        error:
+          "Stripe account not connected. Go to https://sagah.xyz/dashboard/pipeline and connect your Stripe account, then retry.",
+      },
       { status: 422, headers: corsHeaders }
     );
   }
 
   const body = await req.json().catch(() => ({}));
-  const { amount, currency = "usd", metadata = {} } = body as Record<string, unknown>;
+  const {
+    hosted = false,
+    amount,
+    currency = "usd",
+    metadata = {},
+    productName = "Payment",
+    successUrl,
+    cancelUrl,
+  } = body as Record<string, unknown>;
 
   if (typeof amount !== "number" || amount < 50) {
     return NextResponse.json(
@@ -53,25 +75,57 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const safeMetadata =
+    typeof metadata === "object" && metadata !== null
+      ? (metadata as Record<string, string>)
+      : {};
+
   try {
     const fee = platformFee(amount, (client.plan as PlanTier) ?? "Free");
+
+    if (hosted) {
+      if (!successUrl || !cancelUrl) {
+        return NextResponse.json(
+          { error: "successUrl and cancelUrl are required for hosted checkout" },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: String(currency),
+              unit_amount: amount,
+              product_data: { name: String(productName) },
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: fee,
+          transfer_data: { destination: client.stripeAccountId },
+          metadata: { sagah_client_id: client.clientId, ...safeMetadata },
+        },
+        success_url: String(successUrl),
+        cancel_url: String(cancelUrl),
+      });
+
+      return NextResponse.json({ url: session.url, fee }, { headers: corsHeaders });
+    }
+
+    // --- PaymentIntent (custom UI) ---
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: String(currency),
       application_fee_amount: fee,
       transfer_data: { destination: client.stripeAccountId },
-      metadata: {
-        sagah_client_id: client.clientId,
-        ...(typeof metadata === "object" && metadata !== null ? metadata as Record<string, string> : {}),
-      },
+      metadata: { sagah_client_id: client.clientId, ...safeMetadata },
     });
 
     return NextResponse.json(
-      {
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        fee,
-      },
+      { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, fee },
       { headers: corsHeaders }
     );
   } catch (err) {

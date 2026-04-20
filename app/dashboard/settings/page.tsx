@@ -14,15 +14,18 @@ interface ClientData {
   email: string;
   plan: string;
   apiKey?: string;
+  stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
 }
 
 export default function SettingsPage() {
-  const [client, setClient]       = useState<ClientData | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [revealed, setRevealed]   = useState(false);
-  const [copied, setCopied]       = useState(false);
-  const [rotating, setRotating]   = useState(false);
-  const [newKey, setNewKey]       = useState<string | null>(null);
+  const [client, setClient]         = useState<ClientData | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [revealed, setRevealed]     = useState(false);
+  const [copied, setCopied]         = useState(false);
+  const [copiedStripe, setCopiedStripe] = useState(false);
+  const [rotating, setRotating]     = useState(false);
+  const [newKey, setNewKey]         = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/clients/me")
@@ -39,6 +42,13 @@ export default function SettingsPage() {
     await navigator.clipboard.writeText(apiKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function copyStripeId() {
+    if (!client?.stripeAccountId) return;
+    await navigator.clipboard.writeText(client.stripeAccountId);
+    setCopiedStripe(true);
+    setTimeout(() => setCopiedStripe(false), 2000);
   }
 
   async function rotateKey() {
@@ -134,6 +144,47 @@ export default function SettingsPage() {
         )}
       </motion.div>
 
+      {/* Stripe Connect */}
+      <motion.div variants={fade(0.1)} initial="hidden" animate="visible" className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 mb-5">
+        <div className="flex items-start justify-between mb-1">
+          <h2 className="text-sm font-semibold text-white">Stripe Connect</h2>
+          {client?.stripeOnboardingComplete ? (
+            <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20 font-medium">Connected</span>
+          ) : client?.stripeAccountId ? (
+            <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20 font-medium">Pending</span>
+          ) : (
+            <span className="text-[10px] text-white/30 bg-white/[0.06] px-2 py-0.5 rounded-full border border-white/[0.08] font-medium">Not connected</span>
+          )}
+        </div>
+        <p className="text-xs text-white/40 mb-5">
+          Your Stripe Connect account ID — share this with your developer or add it as{' '}
+          <code className="text-white/60 bg-white/[0.06] px-1.5 py-0.5 rounded text-[11px]">SAGAH_STRIPE_ACCOUNT</code>{' '}
+          in your environment variables.
+        </p>
+        {loading ? (
+          <div className="h-10 bg-white/[0.03] rounded-xl animate-pulse" />
+        ) : client?.stripeAccountId ? (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-black/30 border border-white/[0.08] rounded-xl px-4 py-2.5 font-mono text-sm text-white/70 select-all overflow-hidden overflow-ellipsis whitespace-nowrap">
+              {client.stripeAccountId}
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={copyStripeId}
+              className="px-3 py-2.5 rounded-xl text-xs font-medium transition-colors shrink-0 bg-white/[0.06] border border-white/[0.1] text-white hover:bg-white/[0.1]"
+            >
+              {copiedStripe ? "✓ Copied" : "Copy"}
+            </motion.button>
+          </div>
+        ) : (
+          <p className="text-sm text-white/30">
+            No Stripe account linked yet.{' '}
+            <a href="/dashboard/pipeline" className="text-[#FF6B61] hover:underline">Connect Stripe →</a>
+          </p>
+        )}
+      </motion.div>
+
       {/* Integration guide */}
       <motion.div variants={fade(0.12)} initial="hidden" animate="visible" className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-white mb-4">Quick Integration</h2>
@@ -207,20 +258,40 @@ await fetch("https://sagah.xyz/api/v1/users", {
         {/* Payments snippet */}
         <div>
           <p className="text-[10px] text-white/30 mb-1.5 uppercase tracking-wider">5. Accept a payment (requires Stripe Connect)</p>
-          <pre className="bg-black/40 border border-white/[0.06] rounded-xl px-4 py-3 text-xs text-white/70 overflow-x-auto"><code>{`// Server-side — get the clientSecret
+          <pre className="bg-black/40 border border-white/[0.06] rounded-xl px-4 py-3 text-xs text-white/70 overflow-x-auto"><code>{`// Option A — Hosted checkout (recommended, no Stripe.js needed)
+// Server-side: create the session and get a hosted URL
 const res = await fetch("https://sagah.xyz/api/v1/payments/checkout", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
     "Authorization": "Bearer " + process.env.SAGAH_API_KEY,
   },
-  body: JSON.stringify({ amount: 5000, currency: "usd" }), // $50.00
+  body: JSON.stringify({
+    hosted: true,
+    amount: 5000,              // $50.00 in cents
+    productName: "My Service",
+    successUrl: "https://yoursite.com/thank-you",
+    cancelUrl: "https://yoursite.com/checkout",
+  }),
 });
-const { clientSecret } = await res.json();
+const { url } = await res.json();
+// Redirect the customer to the Stripe-hosted page
+window.location.href = url;
 
-// Client-side — complete with Stripe.js
+// ---
+
+// Option B — Custom UI (requires Stripe.js + Elements on your frontend)
+const res2 = await fetch("https://sagah.xyz/api/v1/payments/checkout", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + process.env.SAGAH_API_KEY,
+  },
+  body: JSON.stringify({ amount: 5000 }),
+});
+const { clientSecret } = await res2.json();
 const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
-await stripe.confirmCardPayment(clientSecret, { ... });`}</code></pre>
+await stripe.confirmCardPayment(clientSecret, { payment_method: { card: cardElement } });`}</code></pre>
         </div>
       </motion.div>
     </div>

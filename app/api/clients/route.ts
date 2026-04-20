@@ -79,6 +79,8 @@ export async function GET() {
             status: 1,
             pipelineStage: 1,
             collectionsProvisioned: 1,
+            stripeAccountId: 1,
+            stripeOnboardingComplete: 1,
             createdAt: 1,
           },
         }

@@ -24,6 +24,8 @@ interface ClientRow {
   plan?: string;
   status?: string;
   createdAt?: string;
+  stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
 }
 
 export default function UsersPage() {
@@ -32,6 +34,15 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [copiedStripe, setCopiedStripe] = useState<string | null>(null);
+
+  function copyStripeId(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id).then(() => {
+      setCopiedStripe(id);
+      setTimeout(() => setCopiedStripe(null), 2000);
+    });
+  }
 
   useEffect(() => {
     fetch('/api/clients')
@@ -110,6 +121,22 @@ export default function UsersPage() {
                 <td className="px-5 py-4">
                   <div className="font-medium text-white">{u.name}</div>
                   <div className="text-xs text-white/35 mt-0.5">{u.email}</div>
+                  {u.stripeAccountId && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className={`text-[10px] font-mono ${
+                        u.stripeOnboardingComplete ? 'text-emerald-400/80' : 'text-yellow-400/70'
+                      }`}>
+                        {u.stripeAccountId}
+                      </span>
+                      <button
+                        onClick={(e) => copyStripeId(u.stripeAccountId!, e)}
+                        className="text-[10px] text-white/25 hover:text-white/60 transition-colors shrink-0"
+                        title="Copy Stripe account ID"
+                      >
+                        {copiedStripe === u.stripeAccountId ? '✓' : 'copy'}
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="px-5 py-4">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${planColor[u.plan?.toLowerCase() ?? 'free'] ?? planColor.free}`}>
