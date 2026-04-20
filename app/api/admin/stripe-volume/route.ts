@@ -98,21 +98,29 @@ export async function GET() {
       }
     }
 
-    // ── 4. Recent successful charges ──────────────────────────────────────
+    // ── 4. Recent successful charges (expand payment_intent for client metadata) ─
     const charges = await stripe.charges.list({
       limit: 20,
+      expand: ["data.payment_intent"],
     });
 
     const recentCharges = charges.data
       .filter((c) => c.status === "succeeded")
-      .map((c) => ({
-        id:          c.id,
-        amount:      c.amount,
-        currency:    c.currency,
-        description: c.description ?? c.metadata?.sagah_plan ?? null,
-        customerEmail: typeof c.billing_details?.email === "string" ? c.billing_details.email : null,
-        created:     c.created,
-      }));
+      .map((c) => {
+        const pi = typeof c.payment_intent === "object" && c.payment_intent !== null
+          ? (c.payment_intent as import("stripe").Stripe.PaymentIntent)
+          : null;
+        const sagahClientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id ?? null;
+        return {
+          id:            c.id,
+          amount:        c.amount,
+          currency:      c.currency,
+          description:   c.description ?? pi?.metadata?.sagah_plan ?? null,
+          customerEmail: typeof c.billing_details?.email === "string" ? c.billing_details.email : null,
+          created:       c.created,
+          sagahClientId,
+        };
+      });
 
     return NextResponse.json({
       grossVolume:     Math.round(grossVolume / 100),

@@ -34,6 +34,7 @@ interface StripeVolume {
     description: string | null;
     customerEmail: string | null;
     created: number;
+    sagahClientId: string | null;
   }[];
 }
 
@@ -244,7 +245,7 @@ export default function MonetizationPage() {
             <table className="w-full text-sm min-w-130">
               <thead>
                 <tr className="border-b border-white/6">
-                  {['Customer', 'Description', 'Amount', 'Date'].map((h) => (
+                  {['SAGAH Client', 'Customer', 'Description', 'Amount', 'Date'].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-medium text-white/30">{h}</th>
                   ))}
                 </tr>
@@ -258,6 +259,13 @@ export default function MonetizationPage() {
                     transition={{ delay: 0.35 + i * 0.03 }}
                     className="border-b border-white/4 last:border-0 hover:bg-white/2 transition-colors"
                   >
+                    <td className="px-5 py-3.5 text-xs font-mono">
+                      {c.sagahClientId ? (
+                        <span className="text-[#FF6B61]/80">{c.sagahClientId}</span>
+                      ) : (
+                        <span className="text-white/20">-</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5 text-white/70 text-xs font-mono truncate max-w-40">
                       {c.customerEmail ?? '-'}
                     </td>

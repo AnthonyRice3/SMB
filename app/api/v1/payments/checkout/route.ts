@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         cancel_url: String(cancelUrl),
       });
 
-      return NextResponse.json({ url: session.url, fee }, { headers: corsHeaders });
+      return NextResponse.json({ url: session.url, fee, resolvedClient: { clientId: client.clientId, name: client.name, email: client.email } }, { headers: corsHeaders });
     }
 
     // --- PaymentIntent (custom UI) ---
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(
-      { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, fee },
+      { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, fee, resolvedClient: { clientId: client.clientId, name: client.name, email: client.email } },
       { headers: corsHeaders }
     );
   } catch (err) {
