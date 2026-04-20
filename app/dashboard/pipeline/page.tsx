@@ -219,7 +219,14 @@ function PipelineContent() {
     const stripeParam = searchParams.get("stripe");
     if (stripeParam === "complete") {
       setStripeReturn("complete");
-      setStripeComplete(true);
+      // Proactively verify with Stripe — don't wait for webhook
+      fetch("/api/stripe/connect/verify", { method: "POST" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.complete || data.chargesEnabled) setStripeComplete(true);
+        })
+        .catch(() => null);
+      setStripeComplete(true); // optimistic UI update
     } else if (stripeParam === "refresh") {
       setStripeReturn("refresh");
     }

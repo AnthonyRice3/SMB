@@ -35,6 +35,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [copiedStripe, setCopiedStripe] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   function copyStripeId(id: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -42,6 +43,28 @@ export default function UsersPage() {
       setCopiedStripe(id);
       setTimeout(() => setCopiedStripe(null), 2000);
     });
+  }
+
+  async function verifyStripe(rowId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setVerifying(rowId);
+    try {
+      const res = await fetch(`/api/admin/clients/${rowId}/verify-stripe`, { method: 'POST' });
+      const data = await res.json();
+      if (data.chargesEnabled) {
+        setClients((prev) =>
+          prev.map((c) =>
+            c._id === rowId ? { ...c, stripeOnboardingComplete: true } : c
+          )
+        );
+      } else {
+        alert(`Stripe says charges not yet enabled for this account. Details submitted: ${data.detailsSubmitted}`);
+      }
+    } catch {
+      alert('Verification failed — check console.');
+    } finally {
+      setVerifying(null);
+    }
   }
 
   useEffect(() => {
@@ -134,8 +157,16 @@ export default function UsersPage() {
                         title="Copy Stripe account ID"
                       >
                         {copiedStripe === u.stripeAccountId ? '✓' : 'copy'}
-                      </button>
-                    </div>
+                      </button>                      {!u.stripeOnboardingComplete && (
+                        <button
+                          onClick={(e) => verifyStripe(u._id, e)}
+                          disabled={verifying === u._id}
+                          className="text-[10px] text-[#FF6B61]/70 hover:text-[#FF6B61] transition-colors shrink-0 disabled:opacity-40"
+                          title="Check Stripe and mark complete"
+                        >
+                          {verifying === u._id ? 'checking...' : 'verify'}
+                        </button>
+                      )}                    </div>
                   )}
                 </td>
                 <td className="px-5 py-4">
