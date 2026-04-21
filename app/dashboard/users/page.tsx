@@ -8,16 +8,21 @@ const fade = (d = 0) => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, delay: d } },
 });
 
-interface MessageThread {
+interface AppUser {
   _id: string;
-  userEmail: string;
-  userName: string;
-  userId?: string;
-  lastText: string;
-  lastFrom: "user" | "client";
-  lastAt: string;
+  email: string;
+  name: string;
+  plan: string | null;
+  lastSeenAt: string;
+  firstSeenAt: string;
+  pageViews: number;
+  sessionCount: number;
+  // message thread metadata
+  lastText: string | null;
+  lastFrom: "user" | "client" | null;
+  lastAt: string | null;
   unreadCount: number;
-  totalCount: number;
+  hasMessages: boolean;
 }
 
 interface Message {
@@ -30,7 +35,8 @@ interface Message {
   createdAt: string;
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string | null) {
+  if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
@@ -47,7 +53,7 @@ function initials(name: string) {
 }
 
 export default function UsersPage() {
-  const [threads, setThreads]         = useState<MessageThread[]>([]);
+  const [users, setUsers]             = useState<AppUser[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeEmail, setActiveEmail] = useState<string | null>(null);
   const [messages, setMessages]       = useState<Message[]>([]);
@@ -57,10 +63,10 @@ export default function UsersPage() {
   const [search, setSearch]           = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Poll threads every 15 s
+  // Poll users every 15 s
   useEffect(() => {
-    loadThreads();
-    const id = setInterval(loadThreads, 15000);
+    loadUsers();
+    const id = setInterval(loadUsers, 15000);
     return () => clearInterval(id);
   }, []);
 
@@ -69,11 +75,11 @@ export default function UsersPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function loadThreads() {
+  async function loadUsers() {
     try {
-      const res = await fetch("/api/me/messages");
+      const res = await fetch("/api/me/users");
       const data = await res.json();
-      if (Array.isArray(data.threads)) setThreads(data.threads);
+      if (Array.isArray(data.users)) setUsers(data.users);
     } catch { /* silent */ }
     finally { setLoading(false); }
   }
@@ -85,9 +91,9 @@ export default function UsersPage() {
       const res = await fetch(`/api/me/messages/thread?userEmail=${encodeURIComponent(email)}`);
       const data = await res.json();
       if (Array.isArray(data.messages)) setMessages(data.messages);
-      // Clear unread count locally
-      setThreads((prev) =>
-        prev.map((t) => t.userEmail === email ? { ...t, unreadCount: 0 } : t)
+      // Clear unread badge locally
+      setUsers((prev) =>
+        prev.map((u) => u.email === email ? { ...u, unreadCount: 0 } : u)
       );
     } catch { /* silent */ }
     finally { setThreadLoading(false); }
@@ -95,7 +101,7 @@ export default function UsersPage() {
 
   async function sendReply() {
     if (!reply.trim() || !activeEmail) return;
-    const active = threads.find((t) => t.userEmail === activeEmail);
+    const active = users.find((u) => u.email === activeEmail);
     setSending(true);
     try {
       const res = await fetch("/api/me/messages/thread", {
@@ -103,9 +109,8 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userEmail: activeEmail,
-          userName: active?.userName ?? "User",
+          userName: active?.name ?? "User",
           text: reply.trim(),
-          userId: active?.userId,
         }),
       });
       if (res.ok) {
@@ -113,18 +118,18 @@ export default function UsersPage() {
         const newMsg: Message = {
           _id: data.messageId,
           userEmail: activeEmail,
-          userName: active?.userName ?? "User",
+          userName: active?.name ?? "User",
           from: "client",
           text: reply.trim(),
           read: false,
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, newMsg]);
-        setThreads((prev) =>
-          prev.map((t) =>
-            t.userEmail === activeEmail
-              ? { ...t, lastText: reply.trim(), lastFrom: "client", lastAt: new Date().toISOString() }
-              : t
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.email === activeEmail
+              ? { ...u, lastText: reply.trim(), lastFrom: "client", lastAt: new Date().toISOString(), hasMessages: true }
+              : u
           )
         );
         setReply("");
@@ -133,13 +138,13 @@ export default function UsersPage() {
     finally { setSending(false); }
   }
 
-  const filtered = threads.filter((t) => {
+  const filtered = users.filter((u) => {
     const q = search.toLowerCase();
-    return t.userName.toLowerCase().includes(q) || t.userEmail.toLowerCase().includes(q);
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
   });
 
-  const totalUnread = threads.reduce((s, t) => s + t.unreadCount, 0);
-  const activeThread = threads.find((t) => t.userEmail === activeEmail);
+  const totalUnread = users.reduce((s, u) => s + u.unreadCount, 0);
+  const activeUser  = users.find((u) => u.email === activeEmail);
 
   return (
     <div className="px-8 py-8 h-full">
@@ -157,7 +162,7 @@ export default function UsersPage() {
       </motion.div>
 
       <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
-        {/* Thread list */}
+        {/* User list */}
         <motion.div
           variants={fade(0.05)} initial="hidden" animate="visible"
           className="w-72 shrink-0 flex flex-col bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden"
@@ -183,40 +188,46 @@ export default function UsersPage() {
             ) : filtered.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className="text-sm text-white/20">
-                  {threads.length === 0
-                    ? "No messages yet. Users will appear here once they message you from your app."
+                  {users.length === 0
+                    ? "No users yet. Users appear here once they register in your app."
                     : "No results."}
                 </p>
               </div>
             ) : (
               <div>
-                {filtered.map((t) => (
+                {filtered.map((u) => (
                   <button
-                    key={t.userEmail}
-                    onClick={() => openThread(t.userEmail)}
+                    key={u.email}
+                    onClick={() => openThread(u.email)}
                     className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors border-b border-white/[0.04] last:border-0 ${
-                      activeEmail === t.userEmail
+                      activeEmail === u.email
                         ? "bg-white/[0.06]"
                         : "hover:bg-white/[0.03]"
                     }`}
                   >
                     {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B61]/60 to-[#ff9a8b]/40 flex items-center justify-center shrink-0 text-[11px] font-bold text-white mt-0.5">
-                      {initials(t.userName)}
+                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FF6B61]/60 to-[#ff9a8b]/40 flex items-center justify-center shrink-0 text-[11px] font-bold text-white mt-0.5">
+                      {initials(u.name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-sm font-medium text-white truncate">{t.userName}</span>
-                        <span className="text-[10px] text-white/30 shrink-0">{timeAgo(t.lastAt)}</span>
+                        <span className="text-sm font-medium text-white truncate">{u.name}</span>
+                        <span className="text-[10px] text-white/30 shrink-0">
+                          {u.lastAt ? timeAgo(u.lastAt) : timeAgo(u.lastSeenAt)}
+                        </span>
                       </div>
                       <p className="text-xs text-white/40 truncate mt-0.5">
-                        {t.lastFrom === "client" && <span className="text-white/25">You: </span>}
-                        {t.lastText}
+                        {u.hasMessages
+                          ? <>
+                              {u.lastFrom === "client" && <span className="text-white/25">You: </span>}
+                              {u.lastText}
+                            </>
+                          : u.email}
                       </p>
                     </div>
-                    {t.unreadCount > 0 && (
+                    {u.unreadCount > 0 && (
                       <span className="shrink-0 mt-1 w-4 h-4 rounded-full bg-[#FF6B61] text-white text-[9px] font-bold flex items-center justify-center">
-                        {t.unreadCount > 9 ? "9+" : t.unreadCount}
+                        {u.unreadCount > 9 ? "9+" : u.unreadCount}
                       </span>
                     )}
                   </button>
@@ -244,13 +255,25 @@ export default function UsersPage() {
             <>
               {/* Thread header */}
               <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B61]/60 to-[#ff9a8b]/40 flex items-center justify-center text-[11px] font-bold text-white shrink-0">
-                  {initials(activeThread?.userName ?? "")}
+                <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#FF6B61]/60 to-[#ff9a8b]/40 flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+                  {initials(activeUser?.name ?? "")}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">{activeThread?.userName}</p>
+                  <p className="text-sm font-medium text-white">{activeUser?.name}</p>
                   <p className="text-xs text-white/30">{activeEmail}</p>
                 </div>
+                {/* User stats */}
+                {activeUser && (
+                  <div className="ml-auto flex items-center gap-3 text-[10px] text-white/30">
+                    <span>{activeUser.pageViews} views</span>
+                    <span>{activeUser.sessionCount} sessions</span>
+                    {activeUser.plan && (
+                      <span className="bg-white/[0.06] px-2 py-0.5 rounded-full text-white/50">
+                        {activeUser.plan}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Messages */}
@@ -264,7 +287,10 @@ export default function UsersPage() {
                     ))}
                   </div>
                 ) : messages.length === 0 ? (
-                  <p className="text-center text-sm text-white/20 py-8">No messages yet.</p>
+                  <div className="flex flex-col items-center justify-center h-full gap-2">
+                    <p className="text-sm text-white/20">No messages yet.</p>
+                    <p className="text-xs text-white/15">Send a message to start the conversation.</p>
+                  </div>
                 ) : (
                   <AnimatePresence initial={false}>
                     {messages.map((m) => (
@@ -324,3 +350,4 @@ export default function UsersPage() {
     </div>
   );
 }
+

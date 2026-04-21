@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getClientByClerkUserId, getAppUsersCollection } from "@/lib/db/client-db";
+import {
+  getClientByClerkUserId,
+  getAppUsersCollection,
+  getAppMessagesCollection,
+} from "@/lib/db/client-db";
 
 export async function GET() {
   const { userId } = await auth();
@@ -9,9 +13,75 @@ export async function GET() {
   try {
     const client = await getClientByClerkUserId(userId);
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
-    const col = await getAppUsersCollection(client.clientId);
-    const users = await col.find({}).sort({ lastSeenAt: -1 }).toArray();
-    return NextResponse.json(users);
+
+    const [userCol, msgCol] = await Promise.all([
+      getAppUsersCollection(client.clientId),
+      getAppMessagesCollection(client.clientId),
+    ]);
+
+    const appUsers = await userCol
+      .find({})
+      .sort({ lastSeenAt: -1 })
+      .toArray();
+
+    if (appUsers.length === 0) {
+      return NextResponse.json({ users: [] });
+    }
+
+    // Aggregate message-thread metadata keyed by email
+    const emails = appUsers.map((u) => u.email.toLowerCase().trim());
+    const threads = await msgCol.aggregate([
+      { $match: { userEmail: { $in: emails } } },
+      { $sort: { createdAt: 1 } },
+      {
+        $group: {
+          _id:         "$userEmail",
+          lastText:    { $last: "$text" },
+          lastFrom:    { $last: "$from" },
+          lastAt:      { $last: "$createdAt" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$from", "user"] }, { $eq: ["$read", false] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]).toArray();
+
+    const threadMap = new Map(threads.map((t) => [t._id as string, t]));
+
+    const users = appUsers.map((u) => {
+      const email = u.email.toLowerCase().trim();
+      const thread = threadMap.get(email);
+      return {
+        _id:          u._id,
+        email:        u.email,
+        name:         u.name,
+        plan:         u.plan ?? null,
+        lastSeenAt:   u.lastSeenAt,
+        firstSeenAt:  u.firstSeenAt,
+        pageViews:    u.pageViews ?? 0,
+        sessionCount: u.sessionCount ?? 0,
+        lastText:     thread?.lastText   ?? null,
+        lastFrom:     thread?.lastFrom   ?? null,
+        lastAt:       thread?.lastAt     ?? null,
+        unreadCount:  thread?.unreadCount ?? 0,
+        hasMessages:  !!thread,
+      };
+    });
+
+    // Unread first, then by lastSeenAt
+    users.sort((a, b) => {
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+      return new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
+    });
+
+    return NextResponse.json({ users });
   } catch (err) {
     console.error("[GET /api/me/users]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
