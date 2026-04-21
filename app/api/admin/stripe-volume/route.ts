@@ -98,10 +98,10 @@ export async function GET() {
       }
     }
 
-    // ── 4. Recent successful charges (expand payment_intent for client metadata) ─
+    // ── 4. Recent successful charges (expand payment_intent + customer for email) ─
     const charges = await stripe.charges.list({
       limit: 20,
-      expand: ["data.payment_intent"],
+      expand: ["data.payment_intent", "data.customer"],
     });
 
     const recentCharges = charges.data
@@ -111,12 +111,25 @@ export async function GET() {
           ? (c.payment_intent as import("stripe").Stripe.PaymentIntent)
           : null;
         const sagahClientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id ?? null;
+
+        // Priority: receipt_email (Stripe Checkout captures customer email here)
+        // → billing_details.email (PaymentIntent / manual charges)
+        // → expanded Customer object email
+        const customerObj = typeof c.customer === "object" && c.customer !== null
+          ? (c.customer as import("stripe").Stripe.Customer)
+          : null;
+        const customerEmail =
+          (typeof c.receipt_email === "string" && c.receipt_email ? c.receipt_email : null) ??
+          (typeof c.billing_details?.email === "string" && c.billing_details.email ? c.billing_details.email : null) ??
+          customerObj?.email ??
+          null;
+
         return {
           id:            c.id,
           amount:        c.amount,
           currency:      c.currency,
           description:   c.description ?? pi?.metadata?.sagah_plan ?? null,
-          customerEmail: typeof c.billing_details?.email === "string" ? c.billing_details.email : null,
+          customerEmail,
           created:       c.created,
           sagahClientId,
         };
