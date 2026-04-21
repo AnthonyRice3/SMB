@@ -60,6 +60,23 @@ export interface ClientDoc {
   }>;
   /** True once the 4 per-client collections have been provisioned */
   collectionsProvisioned: boolean;
+  /** Calendar / booking availability settings */
+  calendarSettings?: {
+    /** Length of each bookable slot in minutes (default 60) */
+    slotDuration: number;
+    /** Buffer between bookings in minutes (default 0) */
+    bufferMinutes: number;
+    /** Working hours per day of week. 0 = Sunday, 6 = Saturday */
+    workingHours: Array<{
+      day: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+      start: string; // "09:00" 24-hour
+      end:   string; // "17:00" 24-hour
+    }>;
+    /** Full days that are blocked: ["YYYY-MM-DD"] */
+    blockedDates: string[];
+    /** Individual slots blocked: ["YYYY-MM-DDTHH:MM"] */
+    blockedSlots: string[];
+  };
   createdAt: Date;
   updatedAt: Date;
 }
