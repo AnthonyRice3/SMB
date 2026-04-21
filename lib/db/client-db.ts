@@ -29,6 +29,7 @@ import type {
   InquiryDoc,
   TicketDoc,
   AppExpenseDoc,
+  AppMessageDoc,
   ConsultationDoc,
 } from "@/lib/db/schema";
 import type { Collection } from "mongodb";
@@ -40,7 +41,8 @@ export type ClientCollectionType =
   | "app_events"
   | "app_bookings"
   | "app_revenue"
-  | "app_expenses";
+  | "app_expenses"
+  | "app_messages";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -118,6 +120,14 @@ export async function getAppExpensesCollection(
   );
 }
 
+export async function getAppMessagesCollection(
+  clientId: string
+): Promise<Collection<AppMessageDoc>> {
+  return (await db()).collection<AppMessageDoc>(
+    collectionName(clientId, "app_messages")
+  );
+}
+
 // ─── Collection provisioning ─────────────────────────────────────────────────
 
 /**
@@ -167,6 +177,15 @@ export async function provisionClientCollections(
         [{ createdAt: -1 }, {}],
         [{ status: 1, createdAt: -1 }, {}],
         [{ stripePaymentIntentId: 1 }, { sparse: true, unique: true }],
+      ],
+    },
+    {
+      type: "app_messages",
+      indexes: [
+        [{ userEmail: 1, createdAt: -1 }, {}],
+        [{ userId: 1, createdAt: -1 }, { sparse: true }],
+        [{ from: 1, read: 1 }, {}],
+        [{ createdAt: -1 }, {}],
       ],
     },
   ];

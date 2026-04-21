@@ -214,6 +214,23 @@ export interface AppRevenueDoc {
   createdAt: Date;
 }
 
+// ─── Per-client: {clientId}_app_messages ────────────────────────────────────
+
+export interface AppMessageDoc {
+  _id?: ObjectId;
+  /** End-user identifier (Clerk userId or any stable ID from the client app) */
+  userId?: string;
+  /** Always present — used as the primary thread key */
+  userEmail: string;
+  userName: string;
+  /** "user" = sent by the end-user; "client" = reply sent by the SAGAH client (business) */
+  from: "user" | "client";
+  text: string;
+  /** False until the receiving party has read it */
+  read: boolean;
+  createdAt: Date;
+}
+
 // ─── Per-client: {clientId}_app_expenses ────────────────────────────────────
 
 export type ExpenseCategory =
