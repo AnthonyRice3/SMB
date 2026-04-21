@@ -90,8 +90,9 @@ export async function GET(req: NextRequest) {
     const clientDoc = await clientsCol.findOne({ clientId: client.clientId });
     const settings = clientDoc?.calendarSettings;
 
-    const slotDuration = parseInt(req.nextUrl.searchParams.get("duration") ?? "0") ||
-      settings?.slotDuration ?? 60;
+    const slotDuration =
+      parseInt(req.nextUrl.searchParams.get("duration") ?? "0") ||
+      (settings?.slotDuration ?? 60);
     const bufferMinutes = settings?.bufferMinutes ?? 0;
 
     // ── Full-day blocked? ───────────────────────────────────────────────────
