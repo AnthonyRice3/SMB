@@ -13,6 +13,10 @@
 import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
+import {
+  getAppRevenueCollection,
+  getAppUsersCollection,
+} from "@/lib/db/client-db";
 
 async function requireAdmin() {
   const { userId } = await auth();
@@ -104,56 +108,102 @@ export async function GET() {
       expand: ["data.payment_intent", "data.customer"],
     });
 
-    const recentCharges = charges.data
-      .filter((c) => c.status === "succeeded")
-      .map((c) => {
-        const pi = typeof c.payment_intent === "object" && c.payment_intent !== null
-          ? (c.payment_intent as import("stripe").Stripe.PaymentIntent)
-          : null;
-        const sagahClientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id ?? null;
+    const succeededCharges = charges.data.filter((c) => c.status === "succeeded");
 
-        const userName =
-          pi?.metadata?.user_name ??
-          pi?.metadata?.customer_name ??
-          c.metadata?.user_name ??
-          c.metadata?.customer_name ??
-          null;
+    // ── 4a. Build a map: paymentIntentId → { userName, userEmail, userId }
+    //        by cross-referencing MongoDB revenue docs + app users per client.
+    type PiUser = { userName: string | null; userEmail: string | null; userId: string | null };
+    const piUserMap: Record<string, PiUser> = {};
 
-        const userId =
-          pi?.metadata?.user_id ??
-          pi?.metadata?.clerk_user_id ??
-          c.metadata?.user_id ??
-          c.metadata?.clerk_user_id ??
-          null;
+    // Group by sagah_client_id so we make one DB round-trip per client
+    const clientPiIds: Record<string, string[]> = {};
+    for (const c of succeededCharges) {
+      const pi = typeof c.payment_intent === "object" && c.payment_intent !== null
+        ? (c.payment_intent as import("stripe").Stripe.PaymentIntent)
+        : null;
+      const clientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id;
+      const piId = pi?.id ?? (typeof c.payment_intent === "string" ? c.payment_intent : null);
+      if (clientId && piId) {
+        (clientPiIds[clientId] ??= []).push(piId);
+      }
+    }
 
-        // Priority: receipt_email (Stripe Checkout captures customer email here)
-        // → billing_details.email (PaymentIntent / manual charges)
-        // → expanded Customer object email
-        const customerObj = typeof c.customer === "object" && c.customer !== null
-          ? (c.customer as import("stripe").Stripe.Customer)
-          : null;
-        const customerEmail =
-          pi?.metadata?.user_email ??
-          pi?.metadata?.customer_email ??
-          c.metadata?.user_email ??
-          c.metadata?.customer_email ??
-          (typeof c.receipt_email === "string" && c.receipt_email ? c.receipt_email : null) ??
-          (typeof c.billing_details?.email === "string" && c.billing_details.email ? c.billing_details.email : null) ??
-          customerObj?.email ??
-          null;
+    await Promise.all(
+      Object.entries(clientPiIds).map(async ([clientId, piIds]) => {
+        const [revenueCol, usersCol] = await Promise.all([
+          getAppRevenueCollection(clientId),
+          getAppUsersCollection(clientId),
+        ]);
+        const revDocs = await revenueCol
+          .find({ stripePaymentIntentId: { $in: piIds } })
+          .toArray();
+        const clerkIds = revDocs.map((r) => r.userId).filter(Boolean) as string[];
+        const appUsers = clerkIds.length
+          ? await usersCol.find({ clerkUserId: { $in: clerkIds } }).toArray()
+          : [];
+        const byClerkId = Object.fromEntries(
+          appUsers.filter((u) => u.clerkUserId).map((u) => [u.clerkUserId!, u])
+        );
+        for (const r of revDocs) {
+          if (!r.stripePaymentIntentId) continue;
+          const user = r.userId ? byClerkId[r.userId] : undefined;
+          piUserMap[r.stripePaymentIntentId] = {
+            userName:  user?.name  ?? null,
+            userEmail: user?.email ?? null,
+            userId:    r.userId    ?? null,
+          };
+        }
+      })
+    );
 
-        return {
-          id:            c.id,
-          amount:        c.amount,
-          currency:      c.currency,
-          description:   c.description ?? pi?.metadata?.sagah_plan ?? null,
-          customerEmail,
-          customerName: userName,
-          customerUserId: userId,
-          created:       c.created,
-          sagahClientId,
-        };
-      });
+    const recentCharges = succeededCharges.map((c) => {
+      const pi = typeof c.payment_intent === "object" && c.payment_intent !== null
+        ? (c.payment_intent as import("stripe").Stripe.PaymentIntent)
+        : null;
+      const sagahClientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id ?? null;
+      const piId = pi?.id ?? (typeof c.payment_intent === "string" ? c.payment_intent : null);
+
+      // MongoDB revenue + user lookup takes priority over Stripe metadata
+      const dbUser = piId ? piUserMap[piId] : null;
+
+      const userName =
+        dbUser?.userName ??
+        pi?.metadata?.user_name ??
+        pi?.metadata?.customer_name ??
+        c.metadata?.user_name ??
+        c.metadata?.customer_name ??
+        null;
+
+      const userId =
+        dbUser?.userId ??
+        pi?.metadata?.user_id ??
+        pi?.metadata?.clerk_user_id ??
+        c.metadata?.user_id ??
+        c.metadata?.clerk_user_id ??
+        null;
+
+      // Use DB user email first, then metadata — do NOT fall back to receipt_email
+      // or billing_details.email as those are often the platform account email.
+      const customerEmail =
+        dbUser?.userEmail ??
+        pi?.metadata?.user_email ??
+        pi?.metadata?.customer_email ??
+        c.metadata?.user_email ??
+        c.metadata?.customer_email ??
+        null;
+
+      return {
+        id:             c.id,
+        amount:         c.amount,
+        currency:       c.currency,
+        description:    c.description ?? pi?.metadata?.sagah_plan ?? null,
+        customerEmail,
+        customerName:   userName,
+        customerUserId: userId,
+        created:        c.created,
+        sagahClientId,
+      };
+    });
 
     return NextResponse.json({
       grossVolume:     Math.round(grossVolume / 100),
