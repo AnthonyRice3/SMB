@@ -112,6 +112,12 @@ export interface TicketDoc {
 export type InquiryType   = "inquiry" | "demo";
 export type InquiryStatus = "new" | "read" | "replied";
 
+export interface InquiryReply {
+  id: string;
+  text: string;
+  createdAt: Date;
+}
+
 export interface InquiryDoc {
   _id?: ObjectId;
   type: InquiryType;
@@ -125,6 +131,7 @@ export interface InquiryDoc {
   time?: string;
   duration?: number;
   status: InquiryStatus;
+  replies?: InquiryReply[];
   createdAt: Date;
 }
 

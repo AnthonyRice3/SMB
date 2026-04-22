@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getInquiriesCollection } from "@/lib/db/client-db";
 import { ObjectId } from "mongodb";
-import type { InquiryStatus } from "@/lib/db/schema";
+import { randomUUID } from "crypto";
+import type { InquiryStatus, InquiryReply } from "@/lib/db/schema";
 
 async function requireAdmin() {
   const { userId } = await auth();
@@ -25,18 +26,36 @@ export async function PATCH(
   }
 
   try {
-    const body = await req.json();
-    const { status } = body as { status?: InquiryStatus };
+    const body = await req.json() as { status?: InquiryStatus; reply?: string };
+    const col = await getInquiriesCollection();
+    const filter = { _id: new ObjectId(id) };
 
-    if (!status || !["new", "read", "replied"].includes(status)) {
+    // Adding a reply takes priority — sets status to "replied" automatically
+    if (body.reply && typeof body.reply === "string" && body.reply.trim()) {
+      const newReply: InquiryReply = {
+        id: randomUUID(),
+        text: body.reply.trim(),
+        createdAt: new Date(),
+      };
+
+      const result = await col.updateOne(filter, {
+        $push: { replies: newReply } as never,
+        $set:  { status: "replied" as InquiryStatus },
+      });
+
+      if (result.matchedCount === 0) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ ok: true, replyId: newReply.id });
+    }
+
+    // Status-only update
+    if (!body.status || !["new", "read", "replied"].includes(body.status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const col = await getInquiriesCollection();
-    const result = await col.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status } }
-    );
+    const result = await col.updateOne(filter, { $set: { status: body.status } });
 
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
