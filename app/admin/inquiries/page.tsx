@@ -313,7 +313,7 @@ export default function InquiriesPage() {
                         <div className="min-w-0 flex-1">
                           <span className="text-sm font-medium text-white">{item.name}</span>
                           {item.company && (
-                            <span className="text-sm text-white/40 ml-2">· {item.company}</span>
+                            <span className="text-sm text-white/40 ml-2">- {item.company}</span>
                           )}
                         </div>
                         <p className="hidden md:block flex-1 text-xs text-white/30 truncate max-w-[240px]">
