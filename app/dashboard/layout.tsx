@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
 
 export const metadata: Metadata = {
@@ -6,7 +8,10 @@ export const metadata: Metadata = {
   description: "Your SAGAH business dashboard",
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
   return (
     <div className="flex-1 flex overflow-hidden">
       <DashboardSidebar />

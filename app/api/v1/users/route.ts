@@ -10,6 +10,7 @@
  * Body:
  *   email      — required, the end-user's email
  *   name       — required, display name
+ *   clerkUserId— optional, stable Clerk user ID from the associated app
  *   avatarUrl  — optional
  *   plan       — optional, user's subscription tier inside the client's app
  *   metadata   — optional arbitrary key-value object
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { email, name, avatarUrl, plan, metadata } = body as Record<string, unknown>;
+  const { email, name, clerkUserId, avatarUrl, plan, metadata } = body as Record<string, unknown>;
 
   if (typeof email !== "string" || !email.includes("@")) {
     return NextResponse.json({ error: "Valid email is required" }, { status: 400, headers: corsHeaders });
@@ -47,25 +48,33 @@ export async function POST(req: NextRequest) {
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "name is required" }, { status: 400, headers: corsHeaders });
   }
+  if (clerkUserId != null && typeof clerkUserId !== "string") {
+    return NextResponse.json({ error: "clerkUserId must be a string when provided" }, { status: 400, headers: corsHeaders });
+  }
 
   try {
     const col = await getAppUsersCollection(client.clientId);
     const now = new Date();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const existing = await col.findOne({ email: email.toLowerCase().trim() });
+    const existing = (typeof clerkUserId === "string" && clerkUserId.trim())
+      ? await col.findOne({ clerkUserId: clerkUserId.trim() })
+      : await col.findOne({ email: normalizedEmail });
 
     if (existing) {
       await col.updateOne(
-        { email: email.toLowerCase().trim() },
+        { _id: existing._id },
         {
           $set: {
+            email: normalizedEmail,
             name: (name as string).trim(),
             lastSeenAt: now,
+            ...(clerkUserId ? { clerkUserId: clerkUserId.trim() } : {}),
             ...(avatarUrl ? { avatarUrl: avatarUrl as string } : {}),
             ...(plan ? { plan: plan as string } : {}),
             ...(metadata && typeof metadata === "object" ? { metadata: metadata as Record<string, unknown> } : {}),
           },
-          $inc: { pageViews: 1 },
+          $inc: { pageViews: 1, sessionCount: 1 },
         }
       );
       return NextResponse.json(
@@ -75,8 +84,9 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await col.insertOne({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       name: (name as string).trim(),
+      ...(clerkUserId ? { clerkUserId: clerkUserId.trim() } : {}),
       ...(avatarUrl ? { avatarUrl: avatarUrl as string } : {}),
       ...(plan ? { plan: plan as string } : {}),
       ...(metadata && typeof metadata === "object" ? { metadata: metadata as Record<string, unknown> } : {}),
