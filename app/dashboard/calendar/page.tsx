@@ -30,6 +30,31 @@ interface Booking {
   notes?: string;
 }
 
+interface CalendarSettings {
+  blockedDates?: string[];
+  blockedSlots?: string[];
+}
+
+function to24h(t: string) {
+  const raw = t.trim();
+  const h24 = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (h24) {
+    const hh = Number(h24[1]);
+    const mm = Number(h24[2]);
+    if (hh < 24 && mm < 60) return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  const h12 = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (h12) {
+    let hh = Number(h12[1]);
+    const mm = Number(h12[2]);
+    const period = h12[3].toUpperCase();
+    if (period === "AM" && hh === 12) hh = 0;
+    if (period === "PM" && hh !== 12) hh += 12;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  return raw;
+}
+
 
 
 const TIMES = ["9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM"];
@@ -44,13 +69,25 @@ const STATUS_CLS: Record<BookingStatus, string> = {
 export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
-    fetch("/api/me/bookings")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setBookings(data.map((b: Record<string, unknown>) => ({ ...b, id: String(b._id) } as Booking)));
+    Promise.all([
+      fetch("/api/me/bookings").then((r) => r.json()).catch(() => null),
+      fetch("/api/me/calendar/settings").then((r) => r.json()).catch(() => null),
+    ])
+      .then(([bookingData, settingsData]) => {
+        if (Array.isArray(bookingData)) {
+          setBookings(bookingData.map((b: Record<string, unknown>) => ({ ...b, id: String(b._id) } as Booking)));
+        }
+        const settings = (settingsData as { settings?: CalendarSettings } | null)?.settings;
+        if (Array.isArray(settings?.blockedDates)) {
+          setBlockedDates(settings.blockedDates);
+        }
+        if (Array.isArray(settings?.blockedSlots)) {
+          setBlockedSlots(settings.blockedSlots);
         }
       })
       .catch(() => null)
@@ -59,7 +96,6 @@ export default function CalendarPage() {
   const [viewMo, setViewMo]     = useState(new Date(2026, 3, 1));
   const [selected, setSelected] = useState<Date | null>(null);
   const [newSlot, setNewSlot]   = useState<string | null>(null);
-  const [editId, setEditId]     = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm]         = useState({ name: "", email: "", service: "", duration: "30", notes: "" });
 
@@ -73,6 +109,7 @@ export default function CalendarPage() {
 
   /* dots for days with bookings */
   const bookedDays = new Set(bookings.filter((b) => b.status !== "cancelled").map((b) => b.date));
+  const blockedDaySet = new Set(blockedDates);
 
   function isDis(d: number) {
     const dt = new Date(yr, mo, d);
@@ -86,8 +123,14 @@ export default function CalendarPage() {
 
   /* taken slots on selected day */
   const takenTimes = new Set(
-    dayBookings.filter((b) => b.status !== "cancelled").map((b) => b.time)
+    dayBookings.filter((b) => b.status !== "cancelled").map((b) => to24h(b.time))
   );
+  const blockedTimes = new Set(
+    selectedKey
+      ? blockedSlots.filter((s) => s.startsWith(`${selectedKey}T`)).map((s) => s.slice(11))
+      : []
+  );
+  const isSelectedDayBlocked = !!selectedKey && blockedDaySet.has(selectedKey);
 
   /* upcoming confirmed bookings */
   const upcoming = bookings
@@ -104,8 +147,44 @@ export default function CalendarPage() {
     }).catch(() => null);
   }
 
+  async function saveBlockedSettings(nextDates: string[], nextSlots: string[]) {
+    setSavingSettings(true);
+    setBlockedDates(nextDates);
+    setBlockedSlots(nextSlots);
+    await fetch("/api/me/calendar/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockedDates: nextDates, blockedSlots: nextSlots }),
+    }).catch(() => null);
+    setSavingSettings(false);
+  }
+
+  async function toggleDayBlocked() {
+    if (!selectedKey) return;
+    const currentlyBlocked = blockedDaySet.has(selectedKey);
+    const nextDates = currentlyBlocked
+      ? blockedDates.filter((d) => d !== selectedKey)
+      : [...blockedDates, selectedKey];
+    const nextSlots = blockedSlots.filter((s) => !s.startsWith(`${selectedKey}T`));
+    await saveBlockedSettings(nextDates, nextSlots);
+    if (!currentlyBlocked && newSlot) setNewSlot(null);
+  }
+
+  async function toggleSlotBlocked(slotLabel: string) {
+    if (!selectedKey || blockedDaySet.has(selectedKey)) return;
+    const slot24 = to24h(slotLabel);
+    const key = `${selectedKey}T${slot24}`;
+    const exists = blockedSlots.includes(key);
+    const nextSlots = exists
+      ? blockedSlots.filter((s) => s !== key)
+      : [...blockedSlots, key];
+    await saveBlockedSettings(blockedDates, nextSlots);
+    if (!exists && newSlot === slotLabel) setNewSlot(null);
+  }
+
   async function addBooking() {
     if (!selected || !newSlot || !form.name || !form.email || !form.service) return;
+    if (isSelectedDayBlocked || blockedTimes.has(to24h(newSlot))) return;
     const payload = {
       date: toKey(selected),
       time: newSlot,
@@ -207,6 +286,7 @@ export default function CalendarPage() {
                 const isTod  = key === todayKey;
                 const isSel  = key === selectedKey;
                 const hasBkg = bookedDays.has(key);
+                const isBlockedDay = blockedDaySet.has(key);
                 return (
                   <button
                     key={day}
@@ -216,6 +296,7 @@ export default function CalendarPage() {
                       "relative aspect-square rounded-xl flex flex-col items-center justify-center text-xs transition-colors",
                       isSel  ? "bg-[#FF6B61] text-white font-semibold" : "",
                       isTod && !isSel ? "border border-[#FF6B61]/50 text-white" : "",
+                      isBlockedDay && !isSel ? "ring-1 ring-amber-400/50 text-amber-300" : "",
                       dis     ? "text-white/15 cursor-not-allowed" : "",
                       !dis && !isSel && !isTod ? "text-white/60 hover:bg-white/[0.07] hover:text-white" : "",
                     ].join(" ")}
@@ -223,6 +304,9 @@ export default function CalendarPage() {
                     {day}
                     {hasBkg && !isSel && (
                       <span className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-400" />
+                    )}
+                    {isBlockedDay && !isSel && (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" />
                     )}
                   </button>
                 );
@@ -250,17 +334,38 @@ export default function CalendarPage() {
                     <p className="text-xs text-white/35 mt-0.5">
                       {dayBookings.filter((b) => b.status !== "cancelled").length} appointment(s)
                     </p>
+                    <p className="text-xs mt-1 text-amber-300/70">
+                      {isSelectedDayBlocked ? "This day is blocked for booking" : ""}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="flex items-center gap-1.5 text-xs bg-[#FF6B61]/10 text-[#FF6B61] border border-[#FF6B61]/20 hover:bg-[#FF6B61]/20 px-3 py-1.5 rounded-xl font-medium transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Add booking
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={toggleDayBlocked}
+                      disabled={savingSettings}
+                      className={`text-xs px-3 py-1.5 rounded-xl font-medium transition-colors border ${
+                        isSelectedDayBlocked
+                          ? "bg-amber-400/15 text-amber-300 border-amber-400/30 hover:bg-amber-400/20"
+                          : "bg-white/[0.04] text-white/70 border-white/[0.1] hover:bg-white/[0.08]"
+                      }`}
+                    >
+                      {isSelectedDayBlocked ? "Unblock day" : "Block day"}
+                    </button>
+                    <button
+                      onClick={() => setShowForm(!showForm)}
+                      disabled={isSelectedDayBlocked}
+                      className="flex items-center gap-1.5 text-xs bg-[#FF6B61]/10 text-[#FF6B61] border border-[#FF6B61]/20 hover:bg-[#FF6B61]/20 px-3 py-1.5 rounded-xl font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add booking
+                    </button>
+                  </div>
                 </div>
+
+                {savingSettings && (
+                  <p className="text-[11px] text-white/30 mb-2">Saving calendar blocks...</p>
+                )}
 
                 {/* Existing bookings for the day */}
                 {dayBookings.length === 0 && !showForm && (
@@ -328,20 +433,35 @@ export default function CalendarPage() {
                           <p className="text-xs text-white/30 mb-2">Select time slot</p>
                           <div className="flex flex-wrap gap-1.5">
                             {TIMES.map((t) => {
-                              const taken = takenTimes.has(t);
+                              const slot24 = to24h(t);
+                              const taken = takenTimes.has(slot24);
+                              const blocked = blockedTimes.has(slot24) || isSelectedDayBlocked;
                               return (
-                                <button
-                                  key={t}
-                                  disabled={taken}
-                                  onClick={() => setNewSlot(t)}
-                                  className={`text-[11px] px-2.5 py-1.5 rounded-lg font-medium transition-colors ${
-                                    newSlot === t ? "bg-[#FF6B61] text-white" :
-                                    taken ? "bg-white/[0.02] text-white/15 cursor-not-allowed line-through" :
-                                    "bg-white/[0.05] text-white/50 hover:bg-white/[0.1] hover:text-white"
-                                  }`}
-                                >
-                                  {t}
-                                </button>
+                                <div key={t} className="flex items-center gap-1">
+                                  <button
+                                    disabled={taken || blocked}
+                                    onClick={() => setNewSlot(t)}
+                                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-medium transition-colors ${
+                                      newSlot === t ? "bg-[#FF6B61] text-white" :
+                                      blocked ? "bg-amber-400/10 text-amber-300/50 cursor-not-allowed line-through" :
+                                      taken ? "bg-white/[0.02] text-white/15 cursor-not-allowed line-through" :
+                                      "bg-white/[0.05] text-white/50 hover:bg-white/[0.1] hover:text-white"
+                                    }`}
+                                  >
+                                    {t}
+                                  </button>
+                                  <button
+                                    onClick={() => toggleSlotBlocked(t)}
+                                    disabled={taken || isSelectedDayBlocked || savingSettings}
+                                    className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
+                                      blockedTimes.has(slot24)
+                                        ? "bg-amber-400/15 text-amber-300 border-amber-400/30 hover:bg-amber-400/20"
+                                        : "bg-white/[0.03] text-white/35 border-white/[0.08] hover:text-white/60"
+                                    } disabled:opacity-35 disabled:cursor-not-allowed`}
+                                  >
+                                    {blockedTimes.has(slot24) ? "Unblock" : "Block"}
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>

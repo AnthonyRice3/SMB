@@ -23,6 +23,9 @@ interface AppUser {
   lastAt: string | null;
   unreadCount: number;
   hasMessages: boolean;
+  bookingsCount: number;
+  upcomingServices: number;
+  purchasesCount: number;
 }
 
 interface Message {
@@ -33,6 +36,27 @@ interface Message {
   text: string;
   read: boolean;
   createdAt: string;
+}
+
+interface ActivityItem {
+  type: "service" | "product";
+  source: "booking" | "purchase";
+  id: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  date?: string;
+  time?: string;
+  duration?: number;
+  createdAt?: string;
+  amount?: number;
+  currency?: string;
+}
+
+interface UserActivity {
+  past: ActivityItem[];
+  present: ActivityItem[];
+  future: ActivityItem[];
 }
 
 function timeAgo(dateStr: string | null) {
@@ -58,6 +82,7 @@ export default function UsersPage() {
   const [activeEmail, setActiveEmail] = useState<string | null>(null);
   const [messages, setMessages]       = useState<Message[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [activity, setActivity]       = useState<UserActivity>({ past: [], present: [], future: [] });
   const [reply, setReply]             = useState("");
   const [sending, setSending]         = useState(false);
   const [search, setSearch]           = useState("");
@@ -85,12 +110,24 @@ export default function UsersPage() {
   }
 
   async function openThread(email: string) {
+    const selectedUser = users.find((u) => u.email === email);
     setActiveEmail(email);
     setThreadLoading(true);
     try {
-      const res = await fetch(`/api/me/messages/thread?userEmail=${encodeURIComponent(email)}`);
+      const q = new URLSearchParams({ userEmail: email });
+      if (selectedUser?._id) q.set("userId", selectedUser._id);
+      const res = await fetch(`/api/me/messages/thread?${q.toString()}`);
       const data = await res.json();
       if (Array.isArray(data.messages)) setMessages(data.messages);
+      if (data.activity && typeof data.activity === "object") {
+        setActivity({
+          past: Array.isArray(data.activity.past) ? data.activity.past : [],
+          present: Array.isArray(data.activity.present) ? data.activity.present : [],
+          future: Array.isArray(data.activity.future) ? data.activity.future : [],
+        });
+      } else {
+        setActivity({ past: [], present: [], future: [] });
+      }
       // Clear unread badge locally
       setUsers((prev) =>
         prev.map((u) => u.email === email ? { ...u, unreadCount: 0 } : u)
@@ -224,6 +261,23 @@ export default function UsersPage() {
                             </>
                           : u.email}
                       </p>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {u.upcomingServices > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-300/10 text-sky-300/80 border border-sky-300/20">
+                            {u.upcomingServices} upcoming
+                          </span>
+                        )}
+                        {u.bookingsCount > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-300/10 text-emerald-300/80 border border-emerald-300/20">
+                            {u.bookingsCount} services
+                          </span>
+                        )}
+                        {u.purchasesCount > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-300/10 text-amber-300/80 border border-amber-300/20">
+                            {u.purchasesCount} products
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {u.unreadCount > 0 && (
                       <span className="shrink-0 mt-1 w-4 h-4 rounded-full bg-[#FF6B61] text-white text-[9px] font-bold flex items-center justify-center">
@@ -345,6 +399,62 @@ export default function UsersPage() {
               </div>
             </>
           )}
+        </motion.div>
+
+        <motion.div
+          variants={fade(0.13)} initial="hidden" animate="visible"
+          className="w-80 shrink-0 flex flex-col bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden"
+        >
+          <div className="px-4 py-3 border-b border-white/[0.06]">
+            <h3 className="text-sm font-semibold text-white">Services & Products</h3>
+            <p className="text-[11px] text-white/35 mt-0.5">Past, present, and future user activity</p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            {!activeEmail ? (
+              <p className="text-xs text-white/25 text-center py-8">Select a user to view their service/product timeline.</p>
+            ) : threadLoading ? (
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-14 bg-white/[0.04] rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <>
+                {[
+                  { key: "future", label: "Future", items: activity.future, tone: "text-sky-300" },
+                  { key: "present", label: "Present", items: activity.present, tone: "text-amber-300" },
+                  { key: "past", label: "Past", items: activity.past, tone: "text-white/60" },
+                ].map((group) => (
+                  <div key={group.key}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`text-xs font-semibold uppercase tracking-wider ${group.tone}`}>{group.label}</p>
+                      <span className="text-[10px] text-white/30">{group.items.length}</span>
+                    </div>
+
+                    {group.items.length === 0 ? (
+                      <p className="text-[11px] text-white/20 py-2">No {group.label.toLowerCase()} items.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {group.items.map((item) => (
+                          <div key={`${item.source}-${item.id}`} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-medium text-white truncate">{item.title}</p>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-white/50 capitalize shrink-0">
+                                {item.status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-white/35 mt-0.5 truncate">{item.subtitle}</p>
+                            <p className="text-[10px] text-white/25 mt-1 uppercase tracking-wide">{item.type === "service" ? "Service" : "Product"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>

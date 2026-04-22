@@ -66,6 +66,12 @@ function timeToMinutes(t: string): number | null {
   return null;
 }
 
+function minutesToHHMM(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 // ── GET: end-user reads their own bookings ───────────────────────────────────
 export async function GET(req: NextRequest) {
   const client = await requireApiKey(req);
@@ -131,9 +137,27 @@ export async function POST(req: NextRequest) {
   }
   const requestedDuration = typeof duration === "number" && duration > 0 ? duration : 60;
   const requestedEnd = requestedMins + requestedDuration;
+  const requestedHHMM = minutesToHHMM(requestedMins);
 
   try {
     const col = await getAppBookingsCollection(client.clientId);
+
+    const blockedDates = client.calendarSettings?.blockedDates ?? [];
+    const blockedSlots = client.calendarSettings?.blockedSlots ?? [];
+
+    if (blockedDates.includes(dateStr)) {
+      return NextResponse.json(
+        { error: "Selected date is blocked", blocked: true },
+        { status: 409, headers: corsHeaders }
+      );
+    }
+
+    if (blockedSlots.includes(`${dateStr}T${requestedHHMM}`)) {
+      return NextResponse.json(
+        { error: "Selected time slot is blocked", blocked: true },
+        { status: 409, headers: corsHeaders }
+      );
+    }
 
     // ── Conflict check ──────────────────────────────────────────────────────
     const sameDay = await col
