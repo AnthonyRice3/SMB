@@ -14,6 +14,10 @@
  *   cancelUrl   — required, URL to redirect to if customer cancels
  *   productName — optional, line item label shown on the Stripe checkout page (default: "Payment")
  *   currency    — optional, default "usd"
+ *   userEmail   — optional, end-user email (recommended for attribution)
+ *   userName    — optional, end-user display name
+ *   userId      — optional, SAGAH app user ID
+ *   clerkUserId — optional, Clerk user ID from associated app
  *   metadata    — optional, key-value pairs forwarded to Stripe
  *
  * Returns (hosted): { url } — redirect the customer to this Stripe-hosted checkout page
@@ -62,6 +66,10 @@ export async function POST(req: NextRequest) {
     hosted = false,
     amount,
     currency = "usd",
+    userEmail,
+    userName,
+    userId,
+    clerkUserId,
     metadata = {},
     productName = "Payment",
     successUrl,
@@ -79,6 +87,13 @@ export async function POST(req: NextRequest) {
     typeof metadata === "object" && metadata !== null
       ? (metadata as Record<string, string>)
       : {};
+
+  const attributionMetadata: Record<string, string> = {
+    ...(typeof userEmail === "string" && userEmail.trim() ? { user_email: userEmail.trim().toLowerCase() } : {}),
+    ...(typeof userName === "string" && userName.trim() ? { user_name: userName.trim() } : {}),
+    ...(typeof userId === "string" && userId.trim() ? { user_id: userId.trim() } : {}),
+    ...(typeof clerkUserId === "string" && clerkUserId.trim() ? { clerk_user_id: clerkUserId.trim() } : {}),
+  };
 
   try {
     const fee = platformFee(amount, (client.plan as PlanTier) ?? "Free");
@@ -106,8 +121,9 @@ export async function POST(req: NextRequest) {
         payment_intent_data: {
           application_fee_amount: fee,
           transfer_data: { destination: client.stripeAccountId },
-          metadata: { sagah_client_id: client.clientId, ...safeMetadata },
+          metadata: { sagah_client_id: client.clientId, ...attributionMetadata, ...safeMetadata },
         },
+        ...(typeof userEmail === "string" && userEmail.trim() ? { customer_email: userEmail.trim().toLowerCase() } : {}),
         success_url: String(successUrl),
         cancel_url: String(cancelUrl),
       });
@@ -121,7 +137,7 @@ export async function POST(req: NextRequest) {
       currency: String(currency),
       application_fee_amount: fee,
       transfer_data: { destination: client.stripeAccountId },
-      metadata: { sagah_client_id: client.clientId, ...safeMetadata },
+      metadata: { sagah_client_id: client.clientId, ...attributionMetadata, ...safeMetadata },
     });
 
     return NextResponse.json(

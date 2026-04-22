@@ -35,16 +35,32 @@ interface AppUser {
   metadata?: Record<string, unknown>;
 }
 
+interface StatsPayload {
+  bookings?: { total?: number };
+  revenue?: { transactions?: unknown[]; total?: number };
+  pageViews?: { total?: number };
+}
+
 export default function DataPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [stats, setStats] = useState<StatsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "schema">("table");
 
   useEffect(() => {
-    fetch("/api/me/users")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setUsers(data); })
+    Promise.all([
+      fetch("/api/me/users").then((r) => r.json()).catch(() => null),
+      fetch("/api/me/stats").then((r) => r.json()).catch(() => null),
+    ])
+      .then(([usersData, statsData]) => {
+        if (Array.isArray(usersData?.users)) {
+          setUsers(usersData.users);
+        }
+        if (statsData && typeof statsData === "object") {
+          setStats(statsData as StatsPayload);
+        }
+      })
       .catch(() => null)
       .finally(() => setLoading(false));
   }, []);
@@ -88,9 +104,12 @@ export default function DataPage() {
         className="grid sm:grid-cols-3 gap-4 mb-8"
       >
         {[
-          { label: "Collection",  value: COLLECTION_NAME,               mono: true,  color: "text-blue-400" },
-          { label: "Documents",   value: loading ? "…" : users.length.toString(), mono: false, color: "text-white" },
-          { label: "Total views", value: loading ? "…" : users.reduce((s, u) => s + (u.pageViews ?? 0), 0).toLocaleString(), mono: false, color: "text-emerald-400" },
+          { label: "Collection",  value: COLLECTION_NAME, mono: true, color: "text-blue-400" },
+          { label: "Users",       value: loading ? "…" : users.length.toString(), mono: false, color: "text-white" },
+          { label: "Bookings",    value: loading ? "…" : String(stats?.bookings?.total ?? 0), mono: false, color: "text-[#FF6B61]" },
+          { label: "Payments",    value: loading ? "…" : String((stats?.revenue?.transactions ?? []).length), mono: false, color: "text-violet-400" },
+          { label: "Total views", value: loading ? "…" : (stats?.pageViews?.total ?? users.reduce((s, u) => s + (u.pageViews ?? 0), 0)).toLocaleString(), mono: false, color: "text-emerald-400" },
+          { label: "Revenue",     value: loading ? "…" : `$${(stats?.revenue?.total ?? 0).toLocaleString()}`, mono: false, color: "text-amber-400" },
         ].map(({ label, value, mono, color }) => (
           <div key={label} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
             <p className="text-xs text-white/40 mb-1.5">{label}</p>

@@ -33,6 +33,8 @@ interface StripeVolume {
     currency: string;
     description: string | null;
     customerEmail: string | null;
+    customerName: string | null;
+    customerUserId: string | null;
     created: number;
     sagahClientId: string | null;
   }[];
@@ -267,7 +269,15 @@ export default function MonetizationPage() {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-white/70 text-xs font-mono truncate max-w-40">
-                      {c.customerEmail ?? '-'}
+                      <div className="leading-4">
+                        <p className="truncate">{c.customerName ?? c.customerEmail ?? '-'}</p>
+                        {c.customerEmail && (
+                          <p className="text-white/35 truncate">{c.customerEmail}</p>
+                        )}
+                        {c.customerUserId && (
+                          <p className="text-[10px] text-white/25 truncate">ID: {c.customerUserId}</p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-white/50 text-xs truncate max-w-45">
                       {c.description ?? '-'}

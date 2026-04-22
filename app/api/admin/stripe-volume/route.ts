@@ -112,6 +112,20 @@ export async function GET() {
           : null;
         const sagahClientId = pi?.metadata?.sagah_client_id ?? c.metadata?.sagah_client_id ?? null;
 
+        const userName =
+          pi?.metadata?.user_name ??
+          pi?.metadata?.customer_name ??
+          c.metadata?.user_name ??
+          c.metadata?.customer_name ??
+          null;
+
+        const userId =
+          pi?.metadata?.user_id ??
+          pi?.metadata?.clerk_user_id ??
+          c.metadata?.user_id ??
+          c.metadata?.clerk_user_id ??
+          null;
+
         // Priority: receipt_email (Stripe Checkout captures customer email here)
         // → billing_details.email (PaymentIntent / manual charges)
         // → expanded Customer object email
@@ -119,6 +133,10 @@ export async function GET() {
           ? (c.customer as import("stripe").Stripe.Customer)
           : null;
         const customerEmail =
+          pi?.metadata?.user_email ??
+          pi?.metadata?.customer_email ??
+          c.metadata?.user_email ??
+          c.metadata?.customer_email ??
           (typeof c.receipt_email === "string" && c.receipt_email ? c.receipt_email : null) ??
           (typeof c.billing_details?.email === "string" && c.billing_details.email ? c.billing_details.email : null) ??
           customerObj?.email ??
@@ -130,6 +148,8 @@ export async function GET() {
           currency:      c.currency,
           description:   c.description ?? pi?.metadata?.sagah_plan ?? null,
           customerEmail,
+          customerName: userName,
+          customerUserId: userId,
           created:       c.created,
           sagahClientId,
         };

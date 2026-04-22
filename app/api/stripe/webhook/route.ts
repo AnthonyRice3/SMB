@@ -58,11 +58,14 @@ export async function POST(req: NextRequest) {
         if (!clientId) break;
 
         const revenue = await getAppRevenueCollection(clientId);
+        const linkedUserId = pi.metadata?.user_id ?? pi.metadata?.clerk_user_id;
         await revenue.insertOne({
           stripePaymentIntentId: pi.id,
+          ...(linkedUserId ? { userId: linkedUserId } : {}),
           amount: pi.amount,
           currency: pi.currency,
           type: "one_time",
+          ...(pi.metadata?.sagah_plan ? { plan: pi.metadata.sagah_plan } : {}),
           status: "succeeded",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -77,11 +80,14 @@ export async function POST(req: NextRequest) {
         if (!clientId) break;
 
         const revenue = await getAppRevenueCollection(clientId);
+        const linkedUserId = pi.metadata?.user_id ?? pi.metadata?.clerk_user_id;
         await revenue.insertOne({
           stripePaymentIntentId: pi.id,
+          ...(linkedUserId ? { userId: linkedUserId } : {}),
           amount: pi.amount,
           currency: pi.currency,
           type: "one_time",
+          ...(pi.metadata?.sagah_plan ? { plan: pi.metadata.sagah_plan } : {}),
           status: "failed",
           createdAt: new Date(),
           updatedAt: new Date(),
