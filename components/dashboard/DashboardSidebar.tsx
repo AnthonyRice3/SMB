@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { UserButton } from "@clerk/nextjs";
 
 const navItems = [
   {
@@ -195,9 +196,13 @@ export default function DashboardSidebar() {
 
   const UserCard = () => (
     <div className="flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2.5">
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#FF6B61] to-[#ff9a8b] flex items-center justify-center shrink-0 text-[10px] font-bold text-white">
-        {initials}
-      </div>
+      <UserButton
+        appearance={{
+          elements: {
+            avatarBox: "w-7 h-7",
+          },
+        }}
+      />
       <div className="min-w-0">
         <p className="text-xs font-semibold text-white truncate">{client?.name ?? "Loading…"}</p>
         <p className="text-[10px] text-white/30 truncate">{client?.plan ?? "—"}</p>

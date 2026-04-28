@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getInquiries, INQUIRY_EVENT } from '../../lib/inquiries';
+import { UserButton } from '@clerk/nextjs';
 
 interface NavItem {
   href: string;
@@ -128,10 +129,17 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="px-5 py-4 border-t border-white/[0.06]">
+      <div className="px-5 py-4 border-t border-white/[0.06] flex items-center justify-between">
         <Link href="/" onClick={onClose} className="text-xs text-white/25 hover:text-white/50 transition-colors">
           ← Back to site
         </Link>
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: "w-7 h-7",
+            },
+          }}
+        />
       </div>
     </>
   );
