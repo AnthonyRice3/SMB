@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About — Web Developer & SEO Specialist in the Midwest",
+  title: "About — The Platform Built to Launch Your Business Online",
   description:
-    "Meet the team behind SAGAH. We specialize in web design, SEO, AI agents, and scheduling apps for small businesses across Illinois, Indiana, Ohio, Michigan, Minnesota, Wisconsin, and the broader Midwest.",
+    "SAGAH is a nationwide platform that gives businesses a custom website, analytics dashboard, payment processing, and booking system — all from one account. No development team required.",
   keywords: [
-    "web developer midwest",
-    "SEO specialist illinois",
-    "small business developer chicago",
-    "AI agent developer midwest",
-    "web design agency midwest",
-    "business website developer indiana",
-    "local web developer ohio",
+    "custom website platform",
+    "business website with analytics",
+    "launch business online",
+    "website platform for small business",
+    "business software nationwide",
+    "scalable website platform",
+    "no-code business platform",
   ],
   alternates: { canonical: "https://sagah.xyz/about" },
   openGraph: {
-    title: "About SAGAH — Midwest Web Design & Business Technology",
+    title: "About SAGAH — Custom Website & Analytics Platform",
     description:
-      "We build websites, apps, and AI tools for small businesses in the Midwest. Learn about our mission and team.",
+      "Learn how SAGAH gives businesses across the US a custom website, real-time analytics, payments, and booking — in one platform.",
     url: "https://sagah.xyz/about",
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "About SAGAH" }],
   },

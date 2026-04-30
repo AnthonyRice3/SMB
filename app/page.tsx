@@ -11,7 +11,7 @@ const websiteJsonLd = {
   name: "SAGAH",
   url: "https://sagah.xyz",
   description:
-    "Custom websites, scheduling apps, AI agents, and SEO for small businesses across the Midwest United States.",
+    "Custom website platform with real-time analytics, Stripe payments, appointment booking, and built-in SEO for businesses nationwide. Create your free account and go live in weeks.",
   potentialAction: {
     "@type": "SearchAction",
     target: "https://sagah.xyz/?q={search_term_string}",
@@ -25,42 +25,50 @@ const faqJsonLd = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "Do you build websites for small businesses in the Midwest?",
+      name: "What does SAGAH give my business?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. SAGAH specializes in custom websites and web apps for small businesses across Illinois, Indiana, Ohio, Michigan, Minnesota, Wisconsin, Missouri, Iowa, Kansas, Nebraska, and the broader Midwest.",
+        text: "SAGAH gives your business a fully custom website, a real-time analytics dashboard showing user activity and revenue, Stripe payment processing, an appointment booking system, and built-in SEO — all from a single account. No separate tools, no juggling subscriptions.",
       },
     },
     {
       "@type": "Question",
-      name: "What is Stripe Connect and can you integrate it into my website?",
+      name: "Is SAGAH available nationwide?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Stripe Connect lets your business accept payments online. SAGAH can integrate Stripe Connect into your website so customers can pay you directly — no technical knowledge required on your end.",
+        text: "Yes. SAGAH is a cloud-based platform available to businesses across the entire United States. Your custom website and analytics dashboard are hosted on a global edge network so your customers get fast load times no matter where they are.",
       },
     },
     {
       "@type": "Question",
-      name: "Do you offer SEO services for local Midwest businesses?",
+      name: "How does the analytics dashboard work?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. We provide local SEO strategies targeted at Midwest markets to help your business rank higher in Google searches for your city and region.",
+        text: "Your SAGAH dashboard shows real-time data on user signups, bookings, revenue, pipeline stage, and more. Every metric updates live so you always know exactly how your business is performing — without needing a separate analytics tool.",
       },
     },
     {
       "@type": "Question",
-      name: "Can you build an AI scheduling or booking app for my business?",
+      name: "Can I accept payments through my SAGAH website?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Absolutely. SAGAH builds custom appointment scheduling apps with AI-powered features — allowing your customers to book online 24/7 from any device.",
+        text: "Yes. SAGAH integrates Stripe Connect so you can accept card payments, one-time charges, and recurring subscriptions directly through your site. Funds transfer to your bank account within two business days.",
       },
     },
     {
       "@type": "Question",
-      name: "How quickly can you build and launch my website?",
+      name: "How fast can I launch my website?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Most projects go live in 2–6 weeks depending on complexity. We handle design, development, payments, authentication, and deployment so you can focus on your business.",
+        text: "Most SAGAH clients go live within 2–6 weeks. We handle design, development, payments, authentication, SEO, and deployment. You create your free account, complete the onboarding checklist, and your site ships — no technical experience required.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Is there a free plan?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. SAGAH has a free tier that lets you set up your account, explore the dashboard, and start onboarding before you pay anything. Paid plans start at $10/month and unlock lower transaction fees, more users, and priority support.",
       },
     },
   ],

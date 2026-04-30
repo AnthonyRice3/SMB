@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "How It Works — Custom Web Apps for Small Businesses",
+  title: "How It Works — Launch Your Custom Website & Analytics Platform",
   description:
-    "See how SAGAH builds custom websites, AI scheduling apps, SEO strategies, and business automation for small businesses in the Midwest in just a few weeks. Simple process, real results.",
+    "See how SAGAH works: create your free account, complete onboarding, and get a custom website with real-time analytics, Stripe payments, and appointment booking — live in weeks, not months.",
   keywords: [
-    "how to get a website built",
-    "custom web app process",
-    "website development process midwest",
-    "small business app development",
-    "AI scheduling app how it works",
-    "website design process illinois",
-    "business automation how it works",
-    "book a website consultation",
+    "how to launch a business website",
+    "custom website with analytics platform",
+    "business website onboarding",
+    "website with payments and booking",
+    "launch website fast nationwide",
+    "business platform how it works",
+    "website analytics dashboard setup",
+    "create business account and launch website",
   ],
   alternates: { canonical: "https://sagah.xyz/how-it-works" },
   openGraph: {
-    title: "How It Works — SAGAH Web Design & App Development",
+    title: "How It Works — SAGAH Custom Website & Analytics Platform",
     description:
-      "A simple 4-step process to get your custom website, scheduling app, or AI agent live in weeks, not months.",
+      "Create your free account, complete onboarding, and get a custom website with analytics, payments, and booking live in weeks.",
     url: "https://sagah.xyz/how-it-works",
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "How SAGAH works" }],
   },
